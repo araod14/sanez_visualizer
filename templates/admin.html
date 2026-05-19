@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanez — Administración</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: #111827;
+      color: #f9fafb;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.95rem;
+    }
+
+    header {
+      background: #1f2937;
+      border-bottom: 1px solid #374151;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 { font-size: 1.25rem; font-weight: 700; color: #e0c97f; }
+    header a { color: #9ca3af; text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+    header a:hover { color: #f9fafb; }
+
+    main { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+
+    /* Mensajes */
+    .msg {
+      padding: 0.7rem 1.1rem;
+      border-radius: 0.6rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.88rem;
+    }
+    .msg.ok    { background: rgba(34,197,94,0.12);  border: 1px solid rgba(34,197,94,0.3);  color: #86efac; }
+    .msg.error { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.3);  color: #fca5a5; }
+
+    /* Secciones */
+    section {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    section > h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #e0c97f;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.7rem;
+      border-bottom: 1px solid #374151;
+    }
+
+    /* Controles básicos */
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 0.45rem;
+      color: #f9fafb;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #e0c97f; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.5rem 1.1rem;
+      background: #e0c97f;
+      color: #111827;
+      font-weight: 700;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #f0d98a; }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+    .btn-ghost:hover { background: #374151; color: #f9fafb; }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(239,68,68,0.4);
+      color: #f87171;
+      font-weight: 600;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.65rem;
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
+
+    /* ── Tiempo de rotación ── */
+    .fila-inline { display: flex; align-items: flex-end; gap: 0.9rem; flex-wrap: wrap; }
+    .fila-inline input[type="number"] { width: 110px; }
+
+    /* ── Imágenes de fondo ── */
+    .fondos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 1.1rem;
+    }
+
+    .fondo-item {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    .fondo-preview {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      display: block;
+    }
+
+    .fondo-placeholder {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #1a2235;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4b5563;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .fondo-body { padding: 0.8rem; }
+    .fondo-titulo {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 0.55rem;
+    }
+    .fondo-body input[type="file"] {
+      display: block;
+      width: 100%;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-bottom: 0.55rem;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    /* ── Categorías ── */
+    .cats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .cat-panel {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 0.85rem;
+      overflow: hidden;
+    }
+
+    .cat-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.9rem 1rem;
+      background: rgba(224,201,127,0.06);
+      border-bottom: 1px solid #374151;
+    }
+
+    .cat-titulo {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #e0c97f;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .cat-rename-form {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .cat-rename-form input[type="text"] {
+      width: 140px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.82rem;
+    }
+
+    /* Items existentes */
+    .items-list { padding: 0.5rem 1rem; }
+
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .item-row:last-child { border-bottom: none; }
+
+    /* En modo normal: texto */
+    .item-nombre-text {
+      flex: 1;
+      font-size: 0.9rem;
+      color: #e5e7eb;
+    }
+    .item-precio-text {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f9fafb;
+      min-width: 70px;
+      text-align: right;
+    }
+    .item-precio-text::before { content: '$ '; color: #9ca3af; font-weight: 400; }
+
+    /* En modo edición: inputs */
+    .item-edit-form {
+      display: none;
+      flex: 1;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .item-edit-form input[type="text"]   { flex: 1; padding: 0.3rem 0.55rem; font-size: 0.82rem; }
+    .item-edit-form input[type="number"] { width: 90px; padding: 0.3rem 0.55rem; font-size: 0.82rem; }
+
+    .item-row.editing .item-nombre-text,
+    .item-row.editing .item-precio-text,
+    .item-row.editing .btn-edit,
+    .item-row.editing .btn-delete-wrap { display: none; }
+    .item-row.editing .item-edit-form   { display: flex; }
+
+    .btn-edit {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      font-size: 0.75rem;
+      padding: 0.28rem 0.6rem;
+      border-radius: 0.35rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-edit:hover { border-color: #e0c97f; color: #e0c97f; }
+
+    .sin-items {
+      padding: 0.8rem 1rem;
+      color: #4b5563;
+      font-size: 0.82rem;
+      font-style: italic;
+    }
+
+    /* Formulario para agregar item */
+    .add-item-form {
+      padding: 0.8rem 1rem;
+      border-top: 1px solid #374151;
+      background: rgba(255,255,255,0.02);
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .add-item-form .field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .add-item-form label { font-size: 0.68rem; }
+    .add-item-form input[type="text"]   { width: 170px; padding: 0.4rem 0.65rem; font-size: 0.85rem; }
+    .add-item-form input[type="number"] { width: 95px;  padding: 0.4rem 0.65rem; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Sanez — Admin</h1>
+  <a href="/admin/logout">Cerrar sesión</a>
+</header>
+
+<main>
+
+  {% if ok %}
+  <div class="msg ok">✓ {{ ok }}</div>
+  {% endif %}
+  {% if error %}
+  <div class="msg error">✗ {{ error }}</div>
+  {% endif %}
+
+  <!-- ── Tiempo de rotación ── -->
+  <section>
+    <h2>Tiempo de rotación de imágenes</h2>
+    <form method="post" action="/admin/settings">
+      <div class="fila-inline">
+        <div>
+          <label for="tiempo">Segundos por imagen (3–300)</label>
+          <input type="number" id="tiempo" name="tiempo_rotacion"
+                 value="{{ config.tiempo_rotacion_segundos }}" min="3" max="300" required>
+        </div>
+        <button type="submit" class="btn">Guardar</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- ── Imágenes de fondo ── -->
+  <section>
+    <h2>Imágenes de fondo</h2>
+    <div class="fondos-grid">
+      {% for fondo in fondos %}
+      <div class="fondo-item">
+        {% if fondo.url %}
+          <img class="fondo-preview" src="{{ fondo.url }}" alt="Fondo {{ fondo.id }}">
+        {% else %}
+          <div class="fondo-placeholder">Sin imagen</div>
+        {% endif %}
+        <div class="fondo-body">
+          <div class="fondo-titulo">Ranura {{ fondo.id }}</div>
+          <form method="post" action="/admin/background" enctype="multipart/form-data">
+            <input type="hidden" name="slot" value="{{ fondo.id }}">
+            <input type="file" name="imagen" accept=".jpg,.jpeg,.png,.webp" required>
+            <button type="submit" class="btn">
+              {% if fondo.url %}Reemplazar{% else %}Subir{% endif %}
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── Precios por categoría ── -->
+  <section>
+    <h2>Precios por categoría</h2>
+    <div class="cats-grid">
+      {% for cat in categorias %}
+      <div class="cat-panel">
+
+        <!-- Cabecera: nombre de categoría + formulario para renombrarla -->
+        <div class="cat-panel-header">
+          <span class="cat-titulo">{{ cat.nombre }}</span>
+          <form class="cat-rename-form" method="post" action="/admin/categories/{{ cat.clave }}">
+            <input type="text" name="nombre" value="{{ cat.nombre }}" placeholder="Nuevo nombre" maxlength="30" required>
+            <button type="submit" class="btn btn-ghost" style="font-size:0.78rem;padding:0.3rem 0.7rem;">
+              Renombrar
+            </button>
+          </form>
+        </div>
+
+        <!-- Lista de items -->
+        <div class="items-list">
+          {% if cat.items %}
+            {% for item in cat.items %}
+            <div class="item-row" id="row-{{ item.id }}">
+              <!-- Vista normal -->
+              <span class="item-nombre-text">{{ item.nombre }}</span>
+              <span class="item-precio-text">{{ item.precio | int }}</span>
+              <button class="btn-edit" onclick="toggleEdit({{ item.id }})">Editar</button>
+              <span class="btn-delete-wrap">
+                <form method="post" action="/admin/items/{{ item.id }}/delete"
+                      onsubmit="return confirm('¿Eliminar {{ item.nombre }}?')">
+                  <button type="submit" class="btn btn-danger">✕</button>
+                </form>
+              </span>
+
+              <!-- Vista edición (inline) -->
+              <form class="item-edit-form" method="post" action="/admin/items/{{ item.id }}/edit">
+                <input type="text" name="nombre" value="{{ item.nombre }}" required maxlength="60"
+                       placeholder="Nombre">
+                <input type="number" name="precio" value="{{ item.precio | int }}"
+                       min="0" step="0.01" required placeholder="Precio">
+                <button type="submit" class="btn" style="font-size:0.78rem;padding:0.35rem 0.7rem;">
+                  Guardar
+                </button>
+                <button type="button" class="btn btn-ghost"
+                        style="font-size:0.78rem;padding:0.35rem 0.65rem;"
+                        onclick="cancelEdit({{ item.id }})">
+                  Cancelar
+                </button>
+              </form>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="sin-items">Sin productos — agrega el primero abajo.</div>
+          {% endif %}
+        </div>
+
+        <!-- Formulario para agregar nuevo item -->
+        <form class="add-item-form" method="post" action="/admin/items/add">
+          <input type="hidden" name="categoria_clave" value="{{ cat.clave }}">
+          <div class="field">
+            <label>Nombre del producto</label>
+            <input type="text" name="nombre" placeholder="Ej: Santa Teresa" required maxlength="60">
+          </div>
+          <div class="field">
+            <label>Precio ($)</label>
+            <input type="number" name="precio" placeholder="0" min="0" step="0.01" required>
+          </div>
+          <button type="submit" class="btn">+ Agregar</button>
+        </form>
+
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+</main>
+
+<script>
+  function toggleEdit(id) {
+    document.getElementById('row-' + id).classList.add('editing');
+  }
+  function cancelEdit(id) {
+    document.getElementById('row-' + id).classList.remove('editing');
+  }
+</script>
+
+</body>
+</html>
