@@ -2,7 +2,7 @@ services:
   app:
     build: .
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./sanez.db:/app/sanez.db
       - ./static/uploads:/app/static/uploads
