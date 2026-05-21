@@ -112,23 +112,33 @@ async def api_data(db: Session = Depends(get_db)):
         else:
             backgrounds.append(None)
 
-    categorias = []
-    for clave in ORDEN_CATEGORIAS:
+    pantallas = []
+    for capa_idx, clave in enumerate(ORDEN_CATEGORIAS):
         cat = db.query(Category).filter(Category.clave == clave).first()
-        if cat:
-            categorias.append({
-                "clave": cat.clave,
-                "nombre": cat.nombre,
-                "items": [
-                    {"id": it.id, "nombre": it.nombre, "precio": it.precio}
-                    for it in cat.items
-                ],
+        if not cat:
+            continue
+
+        items = [
+            {"id": it.id, "nombre": it.nombre, "precio": it.precio}
+            for it in cat.items
+        ]
+        n = len(items)
+        num_screens = max(1, round(n / 15)) if n > 0 else 1
+        base, remainder = n // num_screens, n % num_screens
+        start = 0
+        for i in range(num_screens):
+            size = base + (1 if i < remainder else 0)
+            pantallas.append({
+                "capa_idx": capa_idx,
+                "categoria_nombre": cat.nombre,
+                "items": items[start:start + size],
             })
+            start += size
 
     return JSONResponse({
         "tiempo_rotacion": tiempo,
         "backgrounds": backgrounds,
-        "categorias": categorias,
+        "pantallas": pantallas,
     })
 
 

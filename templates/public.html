@@ -182,23 +182,22 @@
     const overlay = document.getElementById('overlay');
     const sinFondo = document.getElementById('sin-fondo');
 
-    // Cada slot de fondo corresponde a una categoría por posición:
-    // slot 0 → categorias[0] (ron), slot 1 → categorias[1] (whisky), etc.
     let estado = {
-      categorias: [],       // array en orden [ron, whisky, cerveza, sangria]
+      pantallas: [],        // array de {capa_idx, categoria_nombre, items[]}
       backgrounds: [],      // array[0..3] de URL|null
       tiempo_rotacion: 10,
-      indiceActivo: -1,     // índice de slot (0-3) actualmente visible
+      indicePantalla: -1,   // índice activo en pantallas[]
+      capaActiva: -1,       // índice de bg-capa actualmente visible (0-3)
       timerRotacion: null,
     };
 
     // ── Arranque ──
     cargarDatos().then(() => {
       aplicarFondos();
-      const disp = fondosDisponibles();
+      const disp = pantallasDisponibles();
       if (!disp.length) return;
       sinFondo.style.display = 'none';
-      mostrarSlot(disp[0].idx, false);   // sin fade en el primer render
+      mostrarPantalla(disp[0].idx, false);
       if (disp.length > 1) programarSiguiente();
     });
 
@@ -207,8 +206,11 @@
       const tiempoAntes = estado.tiempo_rotacion;
       await cargarDatos();
       aplicarFondos();
-      // Refrescar precios de la categoría activa sin cambiar slide
-      if (estado.indiceActivo !== -1) renderCategoria(estado.indiceActivo, false);
+      if (estado.indicePantalla !== -1) {
+        const idx = Math.min(estado.indicePantalla, Math.max(0, estado.pantallas.length - 1));
+        estado.indicePantalla = idx;
+        renderPantalla(idx);
+      }
       if (estado.tiempo_rotacion !== tiempoAntes) {
         clearTimeout(estado.timerRotacion);
         programarSiguiente();
@@ -219,8 +221,8 @@
       try {
         const r = await fetch('/api/data');
         const d = await r.json();
-        estado.categorias    = d.categorias   || [];
-        estado.backgrounds   = d.backgrounds  || [];
+        estado.pantallas       = d.pantallas      || [];
+        estado.backgrounds     = d.backgrounds    || [];
         estado.tiempo_rotacion = d.tiempo_rotacion || 10;
       } catch (e) {
         console.error('Error al cargar datos:', e);
@@ -233,61 +235,61 @@
       });
     }
 
-    function fondosDisponibles() {
-      return estado.backgrounds
-        .map((url, idx) => ({ url, idx }))
-        .filter(f => f.url !== null);
+    function pantallasDisponibles() {
+      return estado.pantallas
+        .map((p, idx) => ({ pantalla: p, idx }))
+        .filter(({ pantalla }) => estado.backgrounds[pantalla.capa_idx] != null);
     }
 
-    // ── Cambiar al slot idx (con o sin fade del overlay) ──
-    function mostrarSlot(idx, conFade = true) {
+    // ── Cambiar a la pantalla indicada (con o sin fade del overlay) ──
+    function mostrarPantalla(pantallaIdx, conFade = true) {
+      estado.indicePantalla = pantallaIdx;
       if (conFade) {
-        // Fade out overlay → actualizar contenido → fade in
         overlay.style.opacity = '0';
         setTimeout(() => {
-          cambiarFondo(idx);
-          renderCategoria(idx);
+          cambiarFondo(estado.pantallas[pantallaIdx].capa_idx);
+          renderPantalla(pantallaIdx);
           overlay.style.opacity = '1';
         }, 650);
       } else {
-        cambiarFondo(idx);
-        renderCategoria(idx);
+        cambiarFondo(estado.pantallas[pantallaIdx].capa_idx);
+        renderPantalla(pantallaIdx);
       }
     }
 
     function cambiarFondo(idx) {
-      if (estado.indiceActivo !== -1 && estado.indiceActivo !== idx) {
-        capas[estado.indiceActivo].style.opacity = '0';
+      if (estado.capaActiva !== -1 && estado.capaActiva !== idx) {
+        capas[estado.capaActiva].style.opacity = '0';
       }
-      estado.indiceActivo = idx;
+      estado.capaActiva = idx;
       capas[idx].style.opacity = '1';
     }
 
-    // ── Renderizar la categoría del slot indicado ──
-    function renderCategoria(slotIdx, fade = false) {
-      const cat = estado.categorias[slotIdx];
-      const titulo  = document.getElementById('cat-titulo');
-      const sep     = document.getElementById('cat-sep');
-      const grid    = document.getElementById('productos-grid');
-      const vacia   = document.getElementById('cat-vacia');
+    // ── Renderizar la pantalla indicada ──
+    function renderPantalla(pantallaIdx) {
+      const pantalla = estado.pantallas[pantallaIdx];
+      const titulo = document.getElementById('cat-titulo');
+      const sep    = document.getElementById('cat-sep');
+      const grid   = document.getElementById('productos-grid');
+      const vacia  = document.getElementById('cat-vacia');
 
-      if (!cat) {
-        titulo.textContent = '';
-        sep.style.display = 'none';
-        grid.innerHTML    = '';
+      if (!pantalla) {
+        titulo.textContent  = '';
+        sep.style.display   = 'none';
+        grid.innerHTML      = '';
         vacia.style.display = 'none';
         return;
       }
 
-      titulo.textContent  = cat.nombre;
-      sep.style.display   = 'block';
+      titulo.textContent = pantalla.categoria_nombre;
+      sep.style.display  = 'block';
 
-      if (cat.items.length === 0) {
+      if (pantalla.items.length === 0) {
         grid.innerHTML      = '';
         vacia.style.display = 'block';
       } else {
         vacia.style.display = 'none';
-        grid.innerHTML = cat.items.map(it => `
+        grid.innerHTML = pantalla.items.map(it => `
           <div class="prod-card">
             <div class="prod-nombre">${esc(it.nombre)}</div>
             <div class="prod-precio">${Number(it.precio).toFixed(0)}</div>
@@ -299,11 +301,11 @@
     function programarSiguiente() {
       clearTimeout(estado.timerRotacion);
       estado.timerRotacion = setTimeout(() => {
-        const disp = fondosDisponibles();
+        const disp = pantallasDisponibles();
         if (disp.length < 2) return;
-        const pos     = disp.findIndex(f => f.idx === estado.indiceActivo);
+        const pos       = disp.findIndex(d => d.idx === estado.indicePantalla);
         const siguiente = disp[(pos + 1) % disp.length];
-        mostrarSlot(siguiente.idx, true);
+        mostrarPantalla(siguiente.idx, true);
         programarSiguiente();
       }, estado.tiempo_rotacion * 1000);
     }
