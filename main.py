@@ -1,3 +1,4 @@
+import math
 import os
 import secrets
 from pathlib import Path
@@ -123,7 +124,7 @@ async def api_data(db: Session = Depends(get_db)):
             for it in cat.items
         ]
         n = len(items)
-        num_screens = max(1, round(n / 15)) if n > 0 else 1
+        num_screens = max(1, math.ceil(n / 15)) if n > 0 else 1
         base, remainder = n // num_screens, n % num_screens
         start = 0
         for i in range(num_screens):
