@@ -40,7 +40,7 @@ RESERVED_SLUGS = {"admin", "super", "api", "login", "logout", "static", "menu", 
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
-app = FastAPI(title="Sanez Visualizer")
+app = FastAPI(title="Visual Panel")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
