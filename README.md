@@ -1,7 +1,8 @@
 # Sanez Visualizer
 
-Cartelera digital para mostrar precios de licores en un Smart TV.  
-Panel de administración para gestionar imágenes, categorías y precios.
+Cartelera digital **multi-tenant** para mostrar precios en un Smart TV.
+Un super-admin crea cuentas; cada cliente gestiona sus categorías, productos
+e imágenes y comparte su menú público en `/menu/<slug>`.
 
 ---
 
@@ -9,152 +10,135 @@ Panel de administración para gestionar imágenes, categorías y precios.
 
 ```
 sanez_visualizer/
-├── main.py              # Aplicación FastAPI (rutas, auth, lógica)
-├── database.py          # Modelos SQLAlchemy e inicialización de DB
+├── main.py                 # Aplicación FastAPI (auth, rutas, lógica)
+├── database.py             # Modelos SQLAlchemy + init_db (bootstrap super-admin)
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
 ├── Makefile
+├── scripts/
+│   └── migrate_to_multitenant.py   # Migración one-shot desde el esquema viejo
 ├── templates/
-│   ├── public.html      # Pantalla TV (pantalla completa)
-│   ├── admin.html       # Panel de administración
-│   └── login.html       # Formulario de login
-└── static/uploads/      # Imágenes subidas (se crea automáticamente)
+│   ├── login.html          # Login (para todos los usuarios)
+│   ├── public.html         # Pantalla TV (consume /api/data/<slug>)
+│   ├── admin/
+│   │   └── dashboard.html  # Panel del usuario
+│   └── super/
+│       ├── users_list.html # Listado de usuarios (super-admin)
+│       └── user_form.html  # Alta/edición de usuario
+└── static/uploads/         # Imágenes subidas (subcarpeta por user_id)
 ```
 
 ---
 
-## Deploy con Docker (recomendado)
+## Modelo multi-tenant
 
-### 1. Requisitos
+- **Super-admin**: cuenta única (creada al primer arranque desde
+  `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD`). Da de alta usuarios desde `/super`.
+- **Usuario** (cliente): inicia sesión en `/login`, gestiona sus categorías
+  (totalmente personalizables), sus productos y un background por categoría.
+- **Público**: cualquiera abre `https://tu-dominio/menu/<slug>` para ver la
+  cartelera de un cliente concreto.
 
-- [Docker](https://docs.docker.com/get-docker/) instalado
-- [Docker Compose](https://docs.docker.com/compose/) (incluido en Docker Desktop)
+El super-admin puede *impersonar* a cualquier usuario para depurar.
 
-### 2. Clonar el repositorio
+---
 
-```bash
-git clone <url-del-repo>
-cd sanez_visualizer
-```
+## Deploy con Docker
 
-### 3. Configurar variables de entorno
-
-Crea un archivo `.env` en la raíz del proyecto:
-
-```bash
-cp .env.example .env   # si existe, o créalo manualmente
-```
-
-Contenido del `.env`:
+### 1. Variables de entorno (`.env`)
 
 ```env
-ADMIN_USER=mi_usuario
-ADMIN_PASSWORD=mi_password_seguro
-SECRET_KEY=pegar_aqui_la_clave_generada
+SUPER_ADMIN_EMAIL=admin@tudominio.com
+SUPER_ADMIN_PASSWORD=cambia-esto-ya
+SECRET_KEY=pegar_aqui_64_chars_hex
 ```
 
-Para generar una `SECRET_KEY` segura:
+Generar `SECRET_KEY`:
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-> El archivo `.env` está en `.gitignore` y nunca se sube al repositorio.
+> Si vienes de la versión vieja, las variables `ADMIN_USER` / `ADMIN_PASSWORD`
+> también funcionan como fallback para crear el super-admin.
 
-### 4. Construir y levantar
+### 2. Levantar
 
 ```bash
-make build   # construye la imagen Docker
-make up      # levanta el contenedor en background
+make build
+make up
 ```
 
-La aplicación queda disponible en:
+App disponible en `http://<IP>:8001` (mapeado desde el 8000 interno).
 
-- **Pantalla TV:** `http://<IP-del-servidor>:8000/`
-- **Panel admin:** `http://<IP-del-servidor>:8000/admin`
+- `/` → redirige a `/login` (o al panel si ya iniciaste sesión).
+- `/login` → acceso para super-admin y usuarios.
+- `/super` → panel del super-admin (CRUD de usuarios + impersonate).
+- `/admin` → panel de cualquier usuario autenticado.
+- `/menu/<slug>` → cartelera pública del usuario `<slug>`.
 
-### 5. Comandos útiles
+### 3. Migrar datos viejos (single-tenant → multi-tenant)
+
+Si tenías la versión anterior con `sanez.db`, antes del primer `make up` con el
+nuevo código:
+
+```bash
+make up                 # arranca el contenedor (crea tablas nuevas vacías)
+make migrate            # crea un usuario "legacy" con todos los datos previos
+```
+
+Variables opcionales (puedes ponerlas en el `.env` antes del migrate):
+
+| Var | Default | Para qué |
+|---|---|---|
+| `LEGACY_SLUG` | `demo` | Slug del usuario legacy (su URL será `/menu/demo`) |
+| `LEGACY_EMAIL` | `legacy@local` | Email para iniciar sesión |
+| `LEGACY_PASSWORD` | el `ADMIN_PASSWORD` viejo o `changeme` | Contraseña inicial |
+| `LEGACY_NEGOCIO` | `Negocio (legacy)` | Nombre comercial mostrado |
+
+El script es **idempotente**: si ya existe el usuario legacy o no detecta
+esquema viejo, no toca nada.
+
+### 4. Comandos del Makefile
 
 | Comando | Descripción |
-|---------|-------------|
+|---|---|
+| `make build` | Reconstruir la imagen Docker |
 | `make up` | Levantar en background |
-| `make down` | Detener y eliminar contenedores |
-| `make restart` | Reiniciar el servicio |
-| `make logs` | Ver logs en tiempo real |
-| `make ps` | Estado de los contenedores |
-| `make build` | Reconstruir la imagen (tras cambios en el código) |
+| `make down` | Bajar el servicio |
+| `make restart` | Bajar + subir |
+| `make logs` | Tail de logs |
+| `make migrate` | Migración one-shot single-tenant → multi-tenant |
 
-### Persistencia de datos
-
-Docker monta dos volúmenes locales para que los datos sobrevivan reinicios y actualizaciones:
+### Persistencia
 
 | Volumen local | Contenido |
-|---------------|-----------|
-| `./sanez.db` | Base de datos SQLite (categorías, precios, configuración) |
-| `./static/uploads/` | Imágenes de fondo subidas desde el admin |
+|---|---|
+| `./sanez.db` | SQLite con usuarios, categorías y productos |
+| `./static/uploads/<user_id>/` | Imágenes de cada usuario (segregadas) |
 
 ---
 
 ## Desarrollo local (sin Docker)
 
-### 1. Crear entorno virtual e instalar dependencias
-
 ```bash
-python3 -m venv venv
-source venv/bin/activate      # Linux/Mac
-# venv\Scripts\activate       # Windows
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
 
-make install                  # equivale a: pip install -r requirements.txt
+export SUPER_ADMIN_EMAIL=admin@local
+export SUPER_ADMIN_PASSWORD=admin
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
-
-### 2. Arrancar con recarga automática
-
-```bash
-make dev
-# equivale a: venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
----
-
-## Acceso al panel de administración
-
-- **URL:** `http://localhost:8000/admin`
-- **Usuario por defecto:** `admin`
-- **Contraseña por defecto:** `admin`
-
-> Cambia siempre las credenciales antes de exponer la aplicación en una red.
 
 ---
 
 ## Configurar el Smart TV
 
-1. Conecta el TV a la misma red que el servidor.
-2. Obtén la IP del servidor: `ip a` o `hostname -I`.
-3. Abre el navegador del TV y navega a `http://<IP>:8000/`.
-4. Activa pantalla completa (F11 o botón del navegador).
-5. Los precios se actualizan automáticamente cada 30 segundos.
-
----
-
-## Funcionalidades del admin
-
-| Sección | Descripción |
-|---------|-------------|
-| Tiempo de rotación | Segundos que se muestra cada imagen (3–300 s) |
-| Imágenes de fondo | 4 ranuras (JPG, PNG o WebP, máx. 5 MB) |
-| Precios | Agregar, editar y eliminar productos por categoría |
-
-### Mapeo ranura → categoría
-
-Cada imagen de fondo muestra exclusivamente los productos de su categoría:
-
-| Ranura | Categoría |
-|--------|-----------|
-| 1 | Ron |
-| 2 | Whisky |
-| 3 | Cerveza |
-| 4 | Sangría |
+1. Conectar el TV a la misma red.
+2. Obtener la URL pública del cliente: `http://<IP>:8001/menu/<slug>`.
+3. Abrir el navegador del TV en esa URL y poner pantalla completa.
+4. La cartelera se actualiza automáticamente cada 30 s.
 
 ---
 

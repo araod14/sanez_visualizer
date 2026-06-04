@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanez — {{ "Editar" if modo == "editar" else "Nuevo" }} usuario</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: #111827;
+      color: #f9fafb;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    header {
+      background: #1f2937;
+      border-bottom: 1px solid #374151;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; color: #e0c97f; }
+    header a { color: #9ca3af; text-decoration: none; font-size: 0.85rem; }
+    main { max-width: 560px; margin: 2rem auto; padding: 0 1.5rem 5rem; }
+    .card {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 1rem;
+      padding: 2rem;
+    }
+    h2 { font-size: 1.1rem; color: #e0c97f; margin-bottom: 1.25rem; }
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+    .hint { display: block; font-size: 0.72rem; color: #6b7280; margin-top: 0.3rem; text-transform: none; letter-spacing: 0; font-weight: 400; }
+    input[type="text"], input[type="email"], input[type="password"] {
+      width: 100%;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 0.5rem;
+      color: #f9fafb;
+      padding: 0.6rem 0.85rem;
+      font-size: 0.95rem;
+      margin-bottom: 1.1rem;
+      outline: none;
+    }
+    input:focus { border-color: #e0c97f; }
+    .check-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.1rem; }
+    .check-row label { margin: 0; text-transform: none; letter-spacing: 0; color: #f9fafb; font-size: 0.9rem; }
+    .btn {
+      display: inline-block;
+      padding: 0.65rem 1.4rem;
+      background: #e0c97f;
+      color: #111827;
+      font-weight: 700;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background: #f0d98a; }
+    .btn-ghost {
+      display: inline-block;
+      padding: 0.65rem 1.4rem;
+      background: transparent;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      border-radius: 0.5rem;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .actions { display: flex; gap: 0.6rem; align-items: center; }
+    .msg.error {
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+      padding: 0.7rem 1.1rem;
+      border-radius: 0.6rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Sanez — Super Admin</h1>
+  <a href="/super">← Volver</a>
+</header>
+
+<main>
+  <div class="card">
+    <h2>{{ "Editar usuario" if modo == "editar" else "Nuevo usuario" }}</h2>
+
+    {% if error %}<div class="msg error">✗ {{ error }}</div>{% endif %}
+
+    <form method="post" action="{% if modo == 'editar' %}/super/users/{{ target.id }}/edit{% else %}/super/users{% endif %}">
+
+      <label for="nombre_negocio">Nombre del negocio</label>
+      <input type="text" id="nombre_negocio" name="nombre_negocio" maxlength="80" required
+             value="{{ target.nombre_negocio if target else '' }}">
+
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" autocomplete="off" required
+             value="{{ target.email if target else '' }}">
+
+      <label for="slug">Slug (URL pública)</label>
+      <input type="text" id="slug" name="slug" maxlength="32" required pattern="[a-z0-9][a-z0-9-]{0,30}[a-z0-9]?"
+             value="{{ target.slug if target else '' }}">
+      <span class="hint">Solo minúsculas, números y guion. Se usa en /menu/&lt;slug&gt;.</span>
+
+      <label for="password" style="margin-top:1rem">
+        Contraseña {% if modo == 'editar' %}(dejar en blanco para no cambiar){% endif %}
+      </label>
+      <input type="password" id="password" name="password" autocomplete="new-password" minlength="6"
+             {% if modo != 'editar' %}required{% endif %}>
+
+      {% if modo == 'editar' and not target.is_super_admin %}
+      <div class="check-row">
+        <input type="checkbox" id="is_active" name="is_active" value="1" {% if target.is_active %}checked{% endif %}>
+        <label for="is_active">Activo (puede iniciar sesión y su menú público es accesible)</label>
+      </div>
+      {% endif %}
+
+      <div class="actions">
+        <button type="submit" class="btn">{{ "Guardar cambios" if modo == "editar" else "Crear usuario" }}</button>
+        <a href="/super" class="btn-ghost">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</main>
+
+</body>
+</html>

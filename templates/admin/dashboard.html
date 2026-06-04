@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ user.nombre_negocio }} — Administración</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: #111827;
+      color: #f9fafb;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.95rem;
+    }
+
+    header {
+      background: #1f2937;
+      border-bottom: 1px solid #374151;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; color: #e0c97f; }
+    header .meta { font-size: 0.8rem; color: #9ca3af; }
+    header a { color: #9ca3af; text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+    header a:hover { color: #f9fafb; }
+    header .actions { display: flex; gap: 1rem; align-items: center; }
+
+    .impersonating-bar {
+      background: rgba(239, 68, 68, 0.15);
+      border-bottom: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+      padding: 0.5rem 2rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .impersonating-bar form { display: inline; }
+    .impersonating-bar button {
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.6);
+      color: #fca5a5;
+      padding: 0.25rem 0.75rem;
+      border-radius: 0.35rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+
+    main { max-width: 1024px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+
+    .msg { padding: 0.7rem 1.1rem; border-radius: 0.6rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+    .msg.ok    { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .msg.error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+
+    section {
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+    section > h2 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #e0c97f;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.7rem;
+      border-bottom: 1px solid #374151;
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+    }
+
+    input[type="number"],
+    input[type="text"] {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 0.45rem;
+      color: #f9fafb;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #e0c97f; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.5rem 1.1rem;
+      background: #e0c97f;
+      color: #111827;
+      font-weight: 700;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #f0d98a; }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      font-weight: 500;
+    }
+    .btn-ghost:hover { background: #374151; color: #f9fafb; }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(239,68,68,0.4);
+      color: #f87171;
+      font-weight: 600;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.65rem;
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
+
+    .fila-inline { display: flex; align-items: flex-end; gap: 0.9rem; flex-wrap: wrap; }
+    .fila-inline input[type="number"] { width: 110px; }
+
+    .menu-url {
+      background: #0f172a;
+      border: 1px dashed #374151;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.85rem;
+      color: #93c5fd;
+      margin-bottom: 1rem;
+      word-break: break-all;
+    }
+    .menu-url a { color: #93c5fd; text-decoration: none; }
+    .menu-url a:hover { text-decoration: underline; }
+
+    /* ── Categorías ── */
+    .cats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .cat-panel {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 0.85rem;
+      overflow: hidden;
+    }
+
+    .cat-bg-preview {
+      width: 100%;
+      aspect-ratio: 16/6;
+      background-size: cover;
+      background-position: center;
+      background-color: #1a2235;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #4b5563;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .cat-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.9rem 1rem;
+      background: rgba(224,201,127,0.06);
+      border-bottom: 1px solid #374151;
+      flex-wrap: wrap;
+    }
+
+    .cat-titulo {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #e0c97f;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .cat-actions { display: flex; gap: 0.3rem; align-items: center; flex-wrap: wrap; }
+    .cat-actions form { display: inline; }
+
+    .cat-rename-form { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; border-bottom: 1px solid #374151; }
+    .cat-rename-form input[type="text"] { flex: 1; padding: 0.35rem 0.65rem; font-size: 0.82rem; }
+
+    .cat-bg-upload {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid #374151;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .cat-bg-upload input[type="file"] {
+      flex: 1;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .items-list { padding: 0.5rem 1rem; }
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .item-row:last-child { border-bottom: none; }
+
+    .item-nombre-text { flex: 1; font-size: 0.9rem; color: #e5e7eb; }
+    .item-precio-text {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #f9fafb;
+      min-width: 70px;
+      text-align: right;
+    }
+    .item-precio-text::before { content: '$ '; color: #9ca3af; font-weight: 400; }
+
+    .item-edit-form { display: none; flex: 1; align-items: center; gap: 0.4rem; }
+    .item-edit-form input[type="text"] { flex: 1; padding: 0.3rem 0.55rem; font-size: 0.82rem; }
+    .item-edit-form input.precio { width: 110px; padding: 0.3rem 0.55rem; font-size: 0.82rem; }
+
+    .item-row.editing .item-nombre-text,
+    .item-row.editing .item-precio-text,
+    .item-row.editing .btn-edit,
+    .item-row.editing .btn-delete-wrap { display: none; }
+    .item-row.editing .item-edit-form { display: flex; }
+
+    .btn-edit {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      font-size: 0.75rem;
+      padding: 0.28rem 0.6rem;
+      border-radius: 0.35rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-edit:hover { border-color: #e0c97f; color: #e0c97f; }
+
+    .sin-items { padding: 0.8rem 1rem; color: #4b5563; font-size: 0.82rem; font-style: italic; }
+
+    .add-item-form {
+      padding: 0.8rem 1rem;
+      border-top: 1px solid #374151;
+      background: rgba(255,255,255,0.02);
+      display: flex;
+      gap: 0.55rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .add-item-form .field { display: flex; flex-direction: column; gap: 0.3rem; }
+    .add-item-form label { font-size: 0.68rem; }
+    .add-item-form input[type="text"] { width: 170px; padding: 0.4rem 0.65rem; font-size: 0.85rem; }
+    .add-item-form input.precio { width: 110px; padding: 0.4rem 0.65rem; font-size: 0.85rem; }
+
+    .new-cat-form { display: flex; gap: 0.6rem; align-items: flex-end; flex-wrap: wrap; }
+    .new-cat-form input[type="text"] { width: 240px; }
+
+    .vacio {
+      text-align: center;
+      color: #6b7280;
+      font-style: italic;
+      padding: 2rem;
+      border: 1px dashed #374151;
+      border-radius: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+{% if impersonating %}
+<div class="impersonating-bar">
+  <span>⚠ Estás impersonando a <strong>{{ user.nombre_negocio }}</strong></span>
+  <form method="post" action="/admin/stop-impersonating">
+    <button type="submit">Salir de impersonación</button>
+  </form>
+</div>
+{% endif %}
+
+<header>
+  <div>
+    <h1>{{ user.nombre_negocio }}</h1>
+    <div class="meta">{{ user.email }}</div>
+  </div>
+  <div class="actions">
+    <a href="/menu/{{ user.slug }}" target="_blank">Ver menú público ↗</a>
+    {% if not impersonating %}<a href="/logout">Cerrar sesión</a>{% endif %}
+  </div>
+</header>
+
+<main>
+
+  {% if ok %}<div class="msg ok">✓ {{ ok }}</div>{% endif %}
+  {% if error %}<div class="msg error">✗ {{ error }}</div>{% endif %}
+
+  <section>
+    <h2>Menú público</h2>
+    <div class="menu-url">
+      Tu URL: <a href="/menu/{{ user.slug }}" target="_blank">/menu/{{ user.slug }}</a>
+    </div>
+    <form method="post" action="/admin/settings">
+      <div class="fila-inline">
+        <div>
+          <label for="tiempo">Tiempo de rotación (3–300 s)</label>
+          <input type="number" id="tiempo" name="tiempo_rotacion"
+                 value="{{ user.tiempo_rotacion_segundos }}" min="3" max="300" required>
+        </div>
+        <button type="submit" class="btn">Guardar</button>
+      </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Nueva categoría</h2>
+    <form method="post" action="/admin/categories" class="new-cat-form">
+      <div>
+        <label for="cat-nombre">Nombre</label>
+        <input type="text" id="cat-nombre" name="nombre" placeholder="Ej: Cervezas, Cafés, Postres…" maxlength="40" required>
+      </div>
+      <button type="submit" class="btn">+ Crear categoría</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Categorías y productos</h2>
+
+    {% if not categorias %}
+    <div class="vacio">
+      Aún no tienes categorías. Crea la primera arriba para empezar a cargar productos.
+    </div>
+    {% else %}
+    <div class="cats-grid">
+      {% for cat in categorias %}
+      <div class="cat-panel">
+
+        {% if cat.background_url %}
+          <div class="cat-bg-preview" style="background-image:url('{{ cat.background_url }}')"></div>
+        {% else %}
+          <div class="cat-bg-preview">Sin imagen de fondo</div>
+        {% endif %}
+
+        <div class="cat-panel-header">
+          <span class="cat-titulo">{{ cat.nombre }}</span>
+          <div class="cat-actions">
+            <form method="post" action="/admin/categories/{{ cat.id }}/move">
+              <input type="hidden" name="direccion" value="arriba">
+              <button type="submit" class="btn-edit" title="Subir">↑</button>
+            </form>
+            <form method="post" action="/admin/categories/{{ cat.id }}/move">
+              <input type="hidden" name="direccion" value="abajo">
+              <button type="submit" class="btn-edit" title="Bajar">↓</button>
+            </form>
+            <form method="post" action="/admin/categories/{{ cat.id }}/delete"
+                  onsubmit="return confirm('¿Eliminar la categoría «{{ cat.nombre }}» y todos sus productos?')">
+              <button type="submit" class="btn btn-danger">Eliminar</button>
+            </form>
+          </div>
+        </div>
+
+        <form class="cat-rename-form" method="post" action="/admin/categories/{{ cat.id }}/edit">
+          <input type="text" name="nombre" value="{{ cat.nombre }}" maxlength="40" required>
+          <button type="submit" class="btn btn-ghost" style="font-size:0.78rem;padding:0.3rem 0.7rem;">Renombrar</button>
+        </form>
+
+        <form class="cat-bg-upload" method="post" action="/admin/categories/{{ cat.id }}/background" enctype="multipart/form-data">
+          <input type="file" name="imagen" accept=".jpg,.jpeg,.png,.webp" required>
+          <button type="submit" class="btn" style="font-size:0.78rem;padding:0.35rem 0.75rem;">
+            {% if cat.background_url %}Reemplazar imagen{% else %}Subir imagen{% endif %}
+          </button>
+        </form>
+
+        <div class="items-list">
+          {% if cat.items %}
+            {% for item in cat.items %}
+            <div class="item-row" id="row-{{ item.id }}">
+              <span class="item-nombre-text">{{ item.nombre }}</span>
+              <span class="item-precio-text">{{ item.precio }}</span>
+              <button class="btn-edit" onclick="toggleEdit({{ item.id }})">Editar</button>
+              <span class="btn-delete-wrap">
+                <form method="post" action="/admin/items/{{ item.id }}/delete"
+                      onsubmit="return confirm('¿Eliminar {{ item.nombre }}?')">
+                  <button type="submit" class="btn btn-danger">✕</button>
+                </form>
+              </span>
+
+              <form class="item-edit-form" method="post" action="/admin/items/{{ item.id }}/edit">
+                <input type="text" name="nombre" value="{{ item.nombre }}" required maxlength="80" placeholder="Nombre">
+                <input type="text" class="precio" name="precio" value="{{ item.precio }}" maxlength="30" required placeholder="Precio">
+                <button type="submit" class="btn" style="font-size:0.78rem;padding:0.35rem 0.7rem;">Guardar</button>
+                <button type="button" class="btn btn-ghost"
+                        style="font-size:0.78rem;padding:0.35rem 0.65rem;"
+                        onclick="cancelEdit({{ item.id }})">Cancelar</button>
+              </form>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="sin-items">Sin productos — agrega el primero abajo.</div>
+          {% endif %}
+        </div>
+
+        <form class="add-item-form" method="post" action="/admin/items/add">
+          <input type="hidden" name="category_id" value="{{ cat.id }}">
+          <div class="field">
+            <label>Producto</label>
+            <input type="text" name="nombre" placeholder="Ej: Santa Teresa" required maxlength="80">
+          </div>
+          <div class="field">
+            <label>Precio</label>
+            <input type="text" class="precio" name="precio" placeholder="0" maxlength="30" required>
+          </div>
+          <button type="submit" class="btn">+ Agregar</button>
+        </form>
+
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+</main>
+
+<script>
+  function toggleEdit(id) { document.getElementById('row-' + id).classList.add('editing'); }
+  function cancelEdit(id) { document.getElementById('row-' + id).classList.remove('editing'); }
+</script>
+
+</body>
+</html>

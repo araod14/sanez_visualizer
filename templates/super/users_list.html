@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sanez — Super Admin</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: #111827;
+      color: #f9fafb;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 0.95rem;
+    }
+    header {
+      background: #1f2937;
+      border-bottom: 1px solid #374151;
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; color: #e0c97f; }
+    header a { color: #9ca3af; text-decoration: none; font-size: 0.85rem; }
+    header a:hover { color: #f9fafb; }
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+    .msg { padding: 0.7rem 1.1rem; border-radius: 0.6rem; margin-bottom: 1.5rem; font-size: 0.88rem; }
+    .msg.ok    { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86efac; }
+    .msg.error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .toolbar h2 { font-size: 1.05rem; color: #e0c97f; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem 1.1rem;
+      background: #e0c97f;
+      color: #111827;
+      font-weight: 700;
+      font-size: 0.85rem;
+      border: none;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .btn:hover { background: #f0d98a; }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid #374151;
+      color: #9ca3af;
+      padding: 0.35rem 0.8rem;
+      font-weight: 500;
+      font-size: 0.8rem;
+      text-decoration: none;
+      border-radius: 0.4rem;
+    }
+    .btn-ghost:hover { background: #374151; color: #f9fafb; }
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(239,68,68,0.4);
+      color: #f87171;
+      padding: 0.35rem 0.8rem;
+      font-weight: 600;
+      font-size: 0.8rem;
+      border-radius: 0.4rem;
+      cursor: pointer;
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    th, td { padding: 0.85rem 1rem; text-align: left; border-bottom: 1px solid #374151; }
+    th { background: #111827; color: #9ca3af; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; }
+    tr:last-child td { border-bottom: none; }
+    tr.inactive td { opacity: 0.5; }
+    .badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 0.3rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .badge.super { background: rgba(224,201,127,0.2); color: #e0c97f; }
+    .badge.off { background: rgba(239,68,68,0.15); color: #f87171; }
+    .slug-link { color: #93c5fd; text-decoration: none; font-family: monospace; font-size: 0.85rem; }
+    .slug-link:hover { text-decoration: underline; }
+    .actions-cell { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .actions-cell form { display: inline; }
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: #6b7280;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Sanez — Super Admin</h1>
+  <a href="/logout">Cerrar sesión</a>
+</header>
+
+<main>
+
+  {% if ok %}<div class="msg ok">✓ {{ ok }}</div>{% endif %}
+  {% if error %}<div class="msg error">✗ {{ error }}</div>{% endif %}
+
+  <div class="toolbar">
+    <h2>Usuarios ({{ rows|length }})</h2>
+    <a href="/super/users/new" class="btn">+ Nuevo usuario</a>
+  </div>
+
+  {% if rows %}
+  <table>
+    <thead>
+      <tr>
+        <th>Negocio</th>
+        <th>Email</th>
+        <th>Slug</th>
+        <th>Categorías</th>
+        <th>Productos</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="{% if not r.u.is_active %}inactive{% endif %}">
+        <td>
+          <strong>{{ r.u.nombre_negocio }}</strong>
+          {% if r.u.is_super_admin %}<span class="badge super">SUPER</span>{% endif %}
+        </td>
+        <td>{{ r.u.email }}</td>
+        <td>
+          {% if r.u.is_super_admin %}
+            —
+          {% else %}
+            <a class="slug-link" href="/menu/{{ r.u.slug }}" target="_blank">/menu/{{ r.u.slug }}</a>
+          {% endif %}
+        </td>
+        <td>{{ r.n_cats }}</td>
+        <td>{{ r.n_items }}</td>
+        <td>
+          {% if r.u.is_active %}Activo{% else %}<span class="badge off">Inactivo</span>{% endif %}
+        </td>
+        <td class="actions-cell">
+          <a class="btn-ghost" href="/super/users/{{ r.u.id }}/edit">Editar</a>
+          {% if not r.u.is_super_admin and r.u.is_active %}
+            <form method="post" action="/super/users/{{ r.u.id }}/impersonate">
+              <button type="submit" class="btn-ghost">Entrar como</button>
+            </form>
+          {% endif %}
+          {% if not r.u.is_super_admin %}
+            <form method="post" action="/super/users/{{ r.u.id }}/delete"
+                  onsubmit="return confirm('¿Eliminar a {{ r.u.nombre_negocio }}? Se borran sus datos e imágenes.')">
+              <button type="submit" class="btn-danger">Eliminar</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">Aún no hay usuarios. Crea el primero con «+ Nuevo usuario».</div>
+  {% endif %}
+
+</main>
+
+</body>
+</html>

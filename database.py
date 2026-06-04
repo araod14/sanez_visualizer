@@ -1,5 +1,18 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, sessionmaker, relationship
+import os
+from datetime import datetime, timezone
+
+import bcrypt
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    UniqueConstraint,
+    create_engine,
+)
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 
 DATABASE_URL = "sqlite:///./sanez.db"
 
@@ -7,28 +20,59 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def _coerce_password(plain: str) -> bytes:
+    # bcrypt impone un máximo de 72 bytes — truncamos en el borde para evitar ValueError.
+    return (plain or "").encode("utf-8")[:72]
+
+
+def hash_password(plain: str) -> str:
+    return bcrypt.hashpw(_coerce_password(plain), bcrypt.gensalt()).decode("utf-8")
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    if not hashed:
+        return False
+    try:
+        return bcrypt.checkpw(_coerce_password(plain), hashed.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
+
+
 class Base(DeclarativeBase):
     pass
 
 
-class Settings(Base):
-    __tablename__ = "settings"
-    id = Column(Integer, primary_key=True)
-    tiempo_rotacion_segundos = Column(Integer, default=10)
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    slug = Column(String, unique=True, nullable=False, index=True)
+    nombre_negocio = Column(String, nullable=False)
+    password_hash = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_super_admin = Column(Boolean, default=False, nullable=False)
+    tiempo_rotacion_segundos = Column(Integer, default=10, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
-
-class Background(Base):
-    __tablename__ = "backgrounds"
-    id = Column(Integer, primary_key=True)   # 1 a 4
-    ruta_archivo = Column(String, nullable=True)
-    orden = Column(Integer)
+    categorias = relationship(
+        "Category",
+        back_populates="usuario",
+        order_by="Category.orden",
+        cascade="all, delete-orphan",
+    )
 
 
 class Category(Base):
     __tablename__ = "categories"
-    clave = Column(String, primary_key=True)   # ron, whisky, cerveza, sangria
+    __table_args__ = (UniqueConstraint("user_id", "orden", name="uq_category_user_orden"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     nombre = Column(String, nullable=False)
-    orden = Column(Integer, default=0)
+    orden = Column(Integer, nullable=False, default=0)
+    background_path = Column(String, nullable=True)
+
+    usuario = relationship("User", back_populates="categorias")
     items = relationship(
         "ProductItem",
         back_populates="categoria",
@@ -40,37 +84,35 @@ class Category(Base):
 class ProductItem(Base):
     __tablename__ = "product_items"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    categoria_clave = Column(String, ForeignKey("categories.clave"), nullable=False)
+    category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False, index=True)
     nombre = Column(String, nullable=False)
-    precio = Column(Float, nullable=False)
-    orden = Column(Integer, default=0)
+    precio = Column(String, nullable=False)
+    orden = Column(Integer, nullable=False, default=0)
+
     categoria = relationship("Category", back_populates="items")
-
-
-CATEGORIAS_DEFAULT = [
-    {"clave": "ron",     "nombre": "Ron",     "orden": 1},
-    {"clave": "whisky",  "nombre": "Whisky",  "orden": 2},
-    {"clave": "cerveza", "nombre": "Cerveza", "orden": 3},
-    {"clave": "sangria", "nombre": "Sangría", "orden": 4},
-]
 
 
 def init_db():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
-        if not db.query(Settings).first():
-            db.add(Settings(id=1, tiempo_rotacion_segundos=10))
+        existing_super = db.query(User).filter(User.is_super_admin.is_(True)).first()
+        if existing_super:
+            return
 
-        for i in range(1, 5):
-            if not db.query(Background).filter(Background.id == i).first():
-                db.add(Background(id=i, ruta_archivo=None, orden=i))
-
-        for c in CATEGORIAS_DEFAULT:
-            if not db.query(Category).filter(Category.clave == c["clave"]).first():
-                db.add(Category(**c))
-
+        email = os.environ.get("SUPER_ADMIN_EMAIL") or os.environ.get("ADMIN_USER", "admin")
+        password = os.environ.get("SUPER_ADMIN_PASSWORD") or os.environ.get("ADMIN_PASSWORD", "admin")
+        super_admin = User(
+            email=email,
+            slug="super",
+            nombre_negocio="Super Admin",
+            password_hash=hash_password(password),
+            is_active=True,
+            is_super_admin=True,
+        )
+        db.add(super_admin)
         db.commit()
+        print(f"Super-admin creado: email={email}")
     finally:
         db.close()
 

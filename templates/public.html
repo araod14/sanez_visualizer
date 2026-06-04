@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sanez — Precios</title>
+  <title>{{ nombre_negocio }} — Menú</title>
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -158,16 +158,11 @@
     }
   </style>
 </head>
-<body>
+<body data-slug="{{ slug }}">
 
-  <div id="sin-fondo"><span>Sanez</span></div>
+  <div id="sin-fondo"><span>{{ nombre_negocio }}</span></div>
 
-  <div id="bg">
-    <div class="bg-capa" id="capa-0"></div>
-    <div class="bg-capa" id="capa-1"></div>
-    <div class="bg-capa" id="capa-2"></div>
-    <div class="bg-capa" id="capa-3"></div>
-  </div>
+  <div id="bg"></div>
 
   <!-- Overlay centrado: título + grid de productos -->
   <div id="overlay">
@@ -178,36 +173,40 @@
   </div>
 
   <script>
-    const capas   = [0,1,2,3].map(i => document.getElementById(`capa-${i}`));
+    const SLUG = document.body.dataset.slug;
+    const bgRoot  = document.getElementById('bg');
     const overlay = document.getElementById('overlay');
     const sinFondo = document.getElementById('sin-fondo');
 
+    let capas = [];           // se crea dinámicamente según backgrounds.length
+
     let estado = {
-      pantallas: [],        // array de {capa_idx, categoria_nombre, items[]}
-      backgrounds: [],      // array[0..3] de URL|null
+      pantallas: [],          // array de {capa_idx, categoria_nombre, items[]}
+      backgrounds: [],        // array de URL|null (uno por categoría)
       tiempo_rotacion: 10,
-      indicePantalla: -1,   // índice activo en pantallas[]
-      capaActiva: -1,       // índice de bg-capa actualmente visible (0-3)
+      indicePantalla: -1,
+      capaActiva: -1,
       timerRotacion: null,
     };
 
     // ── Arranque ──
     cargarDatos().then(() => {
+      reconstruirCapas();
       aplicarFondos();
-      const disp = pantallasDisponibles();
-      if (!disp.length) return;
-      sinFondo.style.display = 'none';
-      mostrarPantalla(disp[0].idx, false);
-      if (disp.length > 1) programarSiguiente();
+      iniciarRotacion();
     });
 
     // Refresco silencioso cada 30 s
     setInterval(async () => {
       const tiempoAntes = estado.tiempo_rotacion;
+      const numBgsAntes = estado.backgrounds.length;
       await cargarDatos();
+      if (estado.backgrounds.length !== numBgsAntes) {
+        reconstruirCapas();
+      }
       aplicarFondos();
-      if (estado.indicePantalla !== -1) {
-        const idx = Math.min(estado.indicePantalla, Math.max(0, estado.pantallas.length - 1));
+      if (estado.indicePantalla !== -1 && estado.pantallas.length) {
+        const idx = Math.min(estado.indicePantalla, estado.pantallas.length - 1);
         estado.indicePantalla = idx;
         renderPantalla(idx);
       }
@@ -219,7 +218,8 @@
 
     async function cargarDatos() {
       try {
-        const r = await fetch('/api/data');
+        const r = await fetch(`/api/data/${encodeURIComponent(SLUG)}`);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
         const d = await r.json();
         estado.pantallas       = d.pantallas      || [];
         estado.backgrounds     = d.backgrounds    || [];
@@ -229,9 +229,21 @@
       }
     }
 
+    function reconstruirCapas() {
+      bgRoot.innerHTML = '';
+      capas = estado.backgrounds.map((_, i) => {
+        const d = document.createElement('div');
+        d.className = 'bg-capa';
+        d.id = `capa-${i}`;
+        bgRoot.appendChild(d);
+        return d;
+      });
+      estado.capaActiva = -1;
+    }
+
     function aplicarFondos() {
       estado.backgrounds.forEach((url, i) => {
-        if (url) capas[i].style.backgroundImage = `url('${url}')`;
+        if (capas[i] && url) capas[i].style.backgroundImage = `url('${url}')`;
       });
     }
 
@@ -241,7 +253,14 @@
         .filter(({ pantalla }) => estado.backgrounds[pantalla.capa_idx] != null);
     }
 
-    // ── Cambiar a la pantalla indicada (con o sin fade del overlay) ──
+    function iniciarRotacion() {
+      const disp = pantallasDisponibles();
+      if (!disp.length) return;
+      sinFondo.style.display = 'none';
+      mostrarPantalla(disp[0].idx, false);
+      if (disp.length > 1) programarSiguiente();
+    }
+
     function mostrarPantalla(pantallaIdx, conFade = true) {
       estado.indicePantalla = pantallaIdx;
       if (conFade) {
@@ -258,14 +277,13 @@
     }
 
     function cambiarFondo(idx) {
-      if (estado.capaActiva !== -1 && estado.capaActiva !== idx) {
+      if (estado.capaActiva !== -1 && estado.capaActiva !== idx && capas[estado.capaActiva]) {
         capas[estado.capaActiva].style.opacity = '0';
       }
       estado.capaActiva = idx;
-      capas[idx].style.opacity = '1';
+      if (capas[idx]) capas[idx].style.opacity = '1';
     }
 
-    // ── Renderizar la pantalla indicada ──
     function renderPantalla(pantallaIdx) {
       const pantalla = estado.pantallas[pantallaIdx];
       const titulo = document.getElementById('cat-titulo');
@@ -292,12 +310,11 @@
         grid.innerHTML = pantalla.items.map(it => `
           <div class="prod-card">
             <div class="prod-nombre">${esc(it.nombre)}</div>
-            <div class="prod-precio">${Number(it.precio).toFixed(0)}</div>
+            <div class="prod-precio">${esc(String(it.precio))}</div>
           </div>`).join('');
       }
     }
 
-    // ── Temporizador de rotación ──
     function programarSiguiente() {
       clearTimeout(estado.timerRotacion);
       estado.timerRotacion = setTimeout(() => {

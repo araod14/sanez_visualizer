@@ -16,6 +16,11 @@ restart:
 logs:
 	docker compose logs -f
 
+# Ejecuta la migración one-shot del esquema single-tenant → multi-tenant.
+# Requiere que el contenedor esté arriba (make up) y que sanez.db exista.
+migrate:
+	docker compose exec app python scripts/migrate_to_multitenant.py
+
 ps:
 	docker compose ps
 
