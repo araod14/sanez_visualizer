@@ -1,0 +1,180 @@
+### Sanez Visualizer - REST API Testing
+### Variables de configuración
+@baseUrl = http://localhost:8000
+@adminEmail = admin@local
+@adminPassword = admin
+@regularEmail = user@example.com
+@regularPassword = password123
+@businessName = Mi Negocio
+@slug = mi-negocio
+
+### ========== AUTENTICACIÓN ==========
+
+### GET / - Redirige según rol del usuario
+GET {{baseUrl}}/
+
+###
+### POST /login - Login con form data
+POST {{baseUrl}}/login
+Content-Type: application/x-www-form-urlencoded
+
+usuario={{adminEmail}}&contrasena={{adminPassword}}
+
+###
+### GET /logout - Cierra sesión
+GET {{baseUrl}}/logout
+
+###
+
+### ========== PANTALLA PÚBLICA ==========
+
+### GET /menu/{slug} - Página pública del menú
+GET {{baseUrl}}/menu/demo
+
+###
+### GET /api/data/{slug} - Datos JSON de la pantalla pública
+GET {{baseUrl}}/api/data/demo
+
+###
+
+### ========== PANEL DE USUARIO ==========
+
+### GET /admin - Dashboard del usuario (requiere autenticación)
+GET {{baseUrl}}/admin
+
+###
+### POST /admin/settings - Actualizar tiempo de rotación
+POST {{baseUrl}}/admin/settings
+Content-Type: application/x-www-form-urlencoded
+
+tiempo_rotacion=10
+
+###
+
+### ========== CATEGORÍAS (CRUD) ==========
+
+### POST /admin/categories - Crear nueva categoría
+POST {{baseUrl}}/admin/categories
+Content-Type: application/x-www-form-urlencoded
+
+nombre=Bebidas
+
+###
+### POST /admin/categories/{cat_id}/edit - Editar categoría
+POST {{baseUrl}}/admin/categories/1/edit
+Content-Type: application/x-www-form-urlencoded
+
+nombre=Bebidas Alcohólicas
+
+###
+### POST /admin/categories/{cat_id}/move - Mover categoría arriba/abajo
+POST {{baseUrl}}/admin/categories/1/move
+Content-Type: application/x-www-form-urlencoded
+
+direccion=abajo
+
+###
+### POST /admin/categories/{cat_id}/background - Subir imagen de fondo
+POST {{baseUrl}}/admin/categories/1/background
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="imagen"; filename="background.jpg"
+Content-Type: image/jpeg
+
+< ./static/uploads/test_image.jpg
+------WebKitFormBoundary--
+
+###
+### POST /admin/categories/{cat_id}/delete - Eliminar categoría
+POST {{baseUrl}}/admin/categories/1/delete
+
+###
+
+### ========== ITEMS (PRODUCTOS) ==========
+
+### POST /admin/items/add - Agregar producto a categoría
+POST {{baseUrl}}/admin/items/add
+Content-Type: application/x-www-form-urlencoded
+
+category_id=1&nombre=Cerveza IPA&precio=$8.50
+
+###
+### POST /admin/items/{item_id}/edit - Editar producto
+POST {{baseUrl}}/admin/items/1/edit
+Content-Type: application/x-www-form-urlencoded
+
+nombre=Cerveza Artesanal IPA&precio=$9.00
+
+###
+### POST /admin/items/{item_id}/delete - Eliminar producto
+POST {{baseUrl}}/admin/items/1/delete
+
+###
+
+### ========== SUPER-ADMIN ==========
+
+### GET /super - Panel super-admin (lista de usuarios)
+GET {{baseUrl}}/super
+
+###
+### GET /super/users/new - Formulario para crear nuevo usuario
+GET {{baseUrl}}/super/users/new
+
+###
+### POST /super/users - Crear nuevo usuario
+POST {{baseUrl}}/super/users
+Content-Type: application/x-www-form-urlencoded
+
+email={{regularEmail}}&slug={{slug}}&nombre_negocio={{businessName}}&password={{regularPassword}}
+
+###
+### GET /super/users/{user_id}/edit - Formulario de edición de usuario
+GET {{baseUrl}}/super/users/2/edit
+
+###
+### POST /super/users/{user_id}/edit - Editar usuario
+POST {{baseUrl}}/super/users/2/edit
+Content-Type: application/x-www-form-urlencoded
+
+email=user@example.com&slug=mi-negocio&nombre_negocio=Mi Negocio Actualizado&is_active=on&password=newpassword123
+
+###
+### POST /super/users/{user_id}/delete - Eliminar usuario
+POST {{baseUrl}}/super/users/2/delete
+
+###
+### POST /super/users/{user_id}/impersonate - Suplantar usuario
+POST {{baseUrl}}/super/users/2/impersonate
+
+###
+
+### ========== IMPERSONACIÓN ==========
+
+### POST /admin/stop-impersonating - Dejar de suplantar usuario
+POST {{baseUrl}}/admin/stop-impersonating
+
+###
+
+### ========== NOTAS ==========
+###
+### 1. Variables de entorno configurables:
+###    - @baseUrl: URL base de la API (default: http://localhost:8000)
+###    - @adminEmail: Email del super-admin (default: admin@local)
+###    - @adminPassword: Contraseña super-admin (default: admin)
+###
+### 2. Algunos endpoints requieren autenticación:
+###    - Usar primero: POST /login para obtener cookies de sesión
+###    - Las cookies se mantienen automáticamente en VS Code REST Client
+###
+### 3. IDs dinámicos:
+###    - Reemplazar {cat_id}, {item_id}, {user_id} con valores reales de la BD
+###    - Ver respuestas de creación para obtener los IDs
+###
+### 4. Uploads de archivos:
+###    - El endpoint de background requiere una imagen válida
+###    - Formatos soportados: jpg, jpeg, png, webp (máx 5MB)
+###
+### 5. Para cambios de contraseña en super-admin:
+###    - Solo se actualiza si el campo password no está vacío
+###    - Mínimo 6 caracteres
