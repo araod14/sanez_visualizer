@@ -303,6 +303,7 @@
 <div class="impersonating-bar">
   <span>⚠ Estás impersonando a <strong>{{ user.nombre_negocio }}</strong></span>
   <form method="post" action="/admin/stop-impersonating">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <button type="submit">Salir de impersonación</button>
   </form>
 </div>
@@ -330,6 +331,7 @@
       Tu URL: <a href="/menu/{{ user.slug }}" target="_blank">/menu/{{ user.slug }}</a>
     </div>
     <form method="post" action="/admin/settings">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div class="fila-inline">
         <div>
           <label for="tiempo">Tiempo de rotación (3–300 s)</label>
@@ -344,6 +346,7 @@
   <section>
     <h2>Nueva categoría</h2>
     <form method="post" action="/admin/categories" class="new-cat-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div>
         <label for="cat-nombre">Nombre</label>
         <input type="text" id="cat-nombre" name="nombre" placeholder="Ej: Cervezas, Cafés, Postres…" maxlength="40" required>
@@ -374,26 +377,31 @@
           <span class="cat-titulo">{{ cat.nombre }}</span>
           <div class="cat-actions">
             <form method="post" action="/admin/categories/{{ cat.id }}/move">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="direccion" value="arriba">
               <button type="submit" class="btn-edit" title="Subir">↑</button>
             </form>
             <form method="post" action="/admin/categories/{{ cat.id }}/move">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <input type="hidden" name="direccion" value="abajo">
               <button type="submit" class="btn-edit" title="Bajar">↓</button>
             </form>
             <form method="post" action="/admin/categories/{{ cat.id }}/delete"
                   onsubmit="return confirm('¿Eliminar la categoría «{{ cat.nombre }}» y todos sus productos?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button type="submit" class="btn btn-danger">Eliminar</button>
             </form>
           </div>
         </div>
 
         <form class="cat-rename-form" method="post" action="/admin/categories/{{ cat.id }}/edit">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="text" name="nombre" value="{{ cat.nombre }}" maxlength="40" required>
           <button type="submit" class="btn btn-ghost" style="font-size:0.78rem;padding:0.3rem 0.7rem;">Renombrar</button>
         </form>
 
         <form class="cat-bg-upload" method="post" action="/admin/categories/{{ cat.id }}/background" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="file" name="imagen" accept=".jpg,.jpeg,.png,.webp" required>
           <button type="submit" class="btn" style="font-size:0.78rem;padding:0.35rem 0.75rem;">
             {% if cat.background_url %}Reemplazar imagen{% else %}Subir imagen{% endif %}
@@ -410,11 +418,13 @@
               <span class="btn-delete-wrap">
                 <form method="post" action="/admin/items/{{ item.id }}/delete"
                       onsubmit="return confirm('¿Eliminar {{ item.nombre }}?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                   <button type="submit" class="btn btn-danger">✕</button>
                 </form>
               </span>
 
               <form class="item-edit-form" method="post" action="/admin/items/{{ item.id }}/edit">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="text" name="nombre" value="{{ item.nombre }}" required maxlength="80" placeholder="Nombre">
                 <input type="text" class="precio" name="precio" value="{{ item.precio }}" maxlength="30" required placeholder="Precio">
                 <button type="submit" class="btn" style="font-size:0.78rem;padding:0.35rem 0.7rem;">Guardar</button>
@@ -430,6 +440,7 @@
         </div>
 
         <form class="add-item-form" method="post" action="/admin/items/add">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="category_id" value="{{ cat.id }}">
           <div class="field">
             <label>Producto</label>

@@ -3,6 +3,8 @@ import os
 import re
 import secrets
 import shutil
+import time
+from collections import defaultdict
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -25,10 +27,35 @@ from database import (
 # ---------------------------------------------------------------------------
 # Configuración
 # ---------------------------------------------------------------------------
+def _env_bool(name: str, default: bool = False) -> bool:
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    return val.strip().lower() in {"1", "true", "yes", "on"}
+
+
+# DEV_MODE habilita atajos inseguros (clave de sesión efímera) para desarrollo local.
+DEV_MODE = _env_bool("DEV_MODE", False)
+
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY:
-    SECRET_KEY = secrets.token_hex(32)
-    print("ADVERTENCIA: SECRET_KEY no configurada. Usando clave temporal — las sesiones no persistirán entre reinicios.")
+    if DEV_MODE:
+        SECRET_KEY = secrets.token_hex(32)
+        print("ADVERTENCIA: SECRET_KEY no configurada (DEV_MODE). Clave temporal — las sesiones no persistirán entre reinicios.")
+    else:
+        raise RuntimeError(
+            "SECRET_KEY no configurada. Define SECRET_KEY en el entorno "
+            "(o DEV_MODE=1 para desarrollo local con clave efímera)."
+        )
+
+# Cookie de sesión: en producción debe servirse sobre HTTPS (SESSION_HTTPS_ONLY=1, por defecto fuera de DEV_MODE).
+SESSION_HTTPS_ONLY = _env_bool("SESSION_HTTPS_ONLY", not DEV_MODE)
+SESSION_SAME_SITE = os.environ.get("SESSION_SAME_SITE", "lax").strip().lower()
+
+# Rate limiting de login: ventana deslizante en memoria por IP (por proceso).
+LOGIN_MAX_ATTEMPTS = int(os.environ.get("LOGIN_MAX_ATTEMPTS", "5"))
+LOGIN_WINDOW_SECONDS = int(os.environ.get("LOGIN_WINDOW_SECONDS", "300"))
+_login_attempts: dict[str, list[float]] = defaultdict(list)
 
 UPLOAD_DIR = Path("static/uploads")
 EXTENSIONES_PERMITIDAS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -37,14 +64,49 @@ TAMANO_MAXIMO = 5 * 1024 * 1024  # 5 MB
 SLUG_REGEX = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")
 RESERVED_SLUGS = {"admin", "super", "api", "login", "logout", "static", "menu", ""}
 
+CSRF_FIELD = "csrf_token"
+SAFE_METHODS = {"GET", "HEAD", "OPTIONS", "TRACE"}
+
+
+def get_csrf_token(request: Request) -> str:
+    """Devuelve (creando si hace falta) el token CSRF de la sesión actual."""
+    token = request.session.get(CSRF_FIELD)
+    if not token:
+        token = secrets.token_urlsafe(32)
+        request.session[CSRF_FIELD] = token
+    return token
+
+
+async def verify_csrf(request: Request) -> None:
+    """Dependencia global: valida el token CSRF en toda petición mutante (form POST)."""
+    if request.method in SAFE_METHODS:
+        return
+    form = await request.form()
+    sent = form.get(CSRF_FIELD)
+    expected = request.session.get(CSRF_FIELD)
+    if not expected or not isinstance(sent, str) or not secrets.compare_digest(sent, expected):
+        raise HTTPException(
+            status_code=403,
+            detail="Token CSRF inválido o ausente. Recarga la página e inténtalo de nuevo.",
+        )
+
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
-app = FastAPI(title="Visual Panel")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+app = FastAPI(title="Visual Panel", dependencies=[Depends(verify_csrf)])
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SECRET_KEY,
+    https_only=SESSION_HTTPS_ONLY,
+    same_site=SESSION_SAME_SITE,
+)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-templates = Jinja2Templates(directory="templates")
+# El context_processor inyecta `csrf_token` en todas las plantillas automáticamente.
+templates = Jinja2Templates(
+    directory="templates",
+    context_processors=[lambda request: {"csrf_token": get_csrf_token(request)}],
+)
 
 
 @app.on_event("startup")
@@ -148,13 +210,26 @@ async def login_submit(
     usuario: str = Form(...),
     contrasena: str = Form(...),
 ):
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    recientes = [t for t in _login_attempts[ip] if now - t < LOGIN_WINDOW_SECONDS]
+    _login_attempts[ip] = recientes
+    if len(recientes) >= LOGIN_MAX_ATTEMPTS:
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"error": "Demasiados intentos fallidos. Espera unos minutos e inténtalo de nuevo."},
+            status_code=429,
+        )
+
     user = db.query(User).filter(User.email == usuario.strip().lower()).first()
     if not user or not user.is_active or not verify_password(contrasena, user.password_hash):
+        _login_attempts[ip].append(now)
         return templates.TemplateResponse(
             request, "login.html",
             {"error": "Usuario o contraseña incorrectos."},
             status_code=401,
         )
+    _login_attempts.pop(ip, None)
     request.session.clear()
     request.session["user_id"] = user.id
     return RedirectResponse(url="/super" if user.is_super_admin else "/admin", status_code=302)

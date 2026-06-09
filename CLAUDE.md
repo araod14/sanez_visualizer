@@ -8,9 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-SUPER_ADMIN_EMAIL=admin@local SUPER_ADMIN_PASSWORD=admin \
+DEV_MODE=1 SUPER_ADMIN_EMAIL=admin@local SUPER_ADMIN_PASSWORD=admin \
   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
+`DEV_MODE=1` permite arrancar sin `SECRET_KEY` (genera una clave efímera) y
+desactiva el flag `Secure` de la cookie de sesión para poder usar HTTP local.
 
 **Docker (producción):**
 ```bash
@@ -24,6 +26,19 @@ make migrate  # one-shot: migra una DB single-tenant vieja al esquema multi-tena
 Variables de entorno en `.env`: `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`,
 `SECRET_KEY`. Los nombres viejos `ADMIN_USER` / `ADMIN_PASSWORD` siguen
 funcionando como fallback para el bootstrap del super-admin.
+
+**Seguridad / sesión** (todas opcionales con defaults seguros):
+- `SECRET_KEY` — **obligatoria en producción**; sin ella el arranque falla salvo `DEV_MODE=1`.
+- `DEV_MODE` — `1` para desarrollo local (clave efímera + cookie sin `Secure`).
+- `SESSION_HTTPS_ONLY` — flag `Secure` de la cookie. Default `1` fuera de `DEV_MODE`.
+  **Si producción NO está detrás de HTTPS, poné `SESSION_HTTPS_ONLY=0`** o el login no funcionará.
+- `SESSION_SAME_SITE` — `lax` (default) / `strict` / `none`.
+- `LOGIN_MAX_ATTEMPTS` (default 5) y `LOGIN_WINDOW_SECONDS` (default 300) — rate limit de login por IP, en memoria por proceso.
+
+**Protección CSRF:** dependencia global `verify_csrf` valida un token de sesión
+(`csrf_token`) en toda petición mutante. Las plantillas lo reciben vía
+`context_processor`; cada `<form method="post">` debe incluir
+`<input type="hidden" name="csrf_token" value="{{ csrf_token }}">`.
 
 ## Architecture
 
