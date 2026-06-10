@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -90,6 +91,13 @@ class ProductItem(Base):
     orden = Column(Integer, nullable=False, default=0)
 
     categoria = relationship("Category", back_populates="items")
+
+
+class ExchangeRate(Base):
+    __tablename__ = "exchange_rates"
+    currency = Column(String, primary_key=True)  # "USD" | "EUR"
+    rate = Column(Float, nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
 def init_db():

@@ -14,8 +14,11 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
+from apscheduler.schedulers.background import BackgroundScheduler
+
 from database import (
     Category,
+    ExchangeRate,
     ProductItem,
     User,
     get_db,
@@ -23,6 +26,7 @@ from database import (
     init_db,
     verify_password,
 )
+from scrapers.tasks import fetch_and_save_rates
 
 # ---------------------------------------------------------------------------
 # Configuración
@@ -109,10 +113,20 @@ templates = Jinja2Templates(
 )
 
 
+_scheduler = BackgroundScheduler(timezone="America/Caracas")
+_scheduler.add_job(fetch_and_save_rates, "cron", hour=14, minute=0, id="bcv_rates")
+
+
 @app.on_event("startup")
 def startup():
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     init_db()
+    _scheduler.start()
+
+
+@app.on_event("shutdown")
+def shutdown():
+    _scheduler.shutdown(wait=False)
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +253,15 @@ async def login_submit(
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse(url="/login", status_code=302)
+
+
+# ---------------------------------------------------------------------------
+# Tasas de cambio BCV
+# ---------------------------------------------------------------------------
+@app.get("/api/exchange-rates")
+async def api_exchange_rates(db: Session = Depends(get_db)):
+    rows = db.query(ExchangeRate).all()
+    return {r.currency: {"rate": r.rate, "updated_at": r.updated_at} for r in rows}
 
 
 # ---------------------------------------------------------------------------
