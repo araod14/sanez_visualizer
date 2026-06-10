@@ -1,115 +1,42 @@
-import os
-from datetime import datetime, timezone
+"""Shim de compatibilidad — el código real vive en `app.*`.
 
-import bcrypt
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    UniqueConstraint,
-    create_engine,
-)
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
+Se mantiene mientras `main.py`, `scrapers/` y `scripts/` siguen importando
+`from database import ...`. Se elimina en el paso final del refactor, una vez
+que esos módulos apunten directamente a `app.*`.
+"""
 
-DATABASE_URL = "sqlite:///./sanez.db"
+from app.config import get_settings
+from app.db import SessionLocal, create_all, engine, get_db
+from app.models import Base, Category, ExchangeRate, ProductItem, User
+from app.security.passwords import hash_password, verify_password
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def _coerce_password(plain: str) -> bytes:
-    # bcrypt impone un máximo de 72 bytes — truncamos en el borde para evitar ValueError.
-    return (plain or "").encode("utf-8")[:72]
-
-
-def hash_password(plain: str) -> str:
-    return bcrypt.hashpw(_coerce_password(plain), bcrypt.gensalt()).decode("utf-8")
+__all__ = [
+    "Base",
+    "User",
+    "Category",
+    "ProductItem",
+    "ExchangeRate",
+    "engine",
+    "SessionLocal",
+    "get_db",
+    "create_all",
+    "hash_password",
+    "verify_password",
+    "init_db",
+]
 
 
-def verify_password(plain: str, hashed: str) -> bool:
-    if not hashed:
-        return False
-    try:
-        return bcrypt.checkpw(_coerce_password(plain), hashed.encode("utf-8"))
-    except (ValueError, TypeError):
-        return False
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String, unique=True, nullable=False, index=True)
-    slug = Column(String, unique=True, nullable=False, index=True)
-    nombre_negocio = Column(String, nullable=False)
-    password_hash = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-    is_super_admin = Column(Boolean, default=False, nullable=False)
-    tiempo_rotacion_segundos = Column(Integer, default=10, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-
-    categorias = relationship(
-        "Category",
-        back_populates="usuario",
-        order_by="Category.orden",
-        cascade="all, delete-orphan",
-    )
-
-
-class Category(Base):
-    __tablename__ = "categories"
-    __table_args__ = (UniqueConstraint("user_id", "orden", name="uq_category_user_orden"),)
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    nombre = Column(String, nullable=False)
-    orden = Column(Integer, nullable=False, default=0)
-    background_path = Column(String, nullable=True)
-
-    usuario = relationship("User", back_populates="categorias")
-    items = relationship(
-        "ProductItem",
-        back_populates="categoria",
-        order_by="ProductItem.orden",
-        cascade="all, delete-orphan",
-    )
-
-
-class ProductItem(Base):
-    __tablename__ = "product_items"
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    category_id = Column(Integer, ForeignKey("categories.id", ondelete="CASCADE"), nullable=False, index=True)
-    nombre = Column(String, nullable=False)
-    precio = Column(String, nullable=False)
-    orden = Column(Integer, nullable=False, default=0)
-
-    categoria = relationship("Category", back_populates="items")
-
-
-class ExchangeRate(Base):
-    __tablename__ = "exchange_rates"
-    currency = Column(String, primary_key=True)  # "USD" | "EUR"
-    rate = Column(Float, nullable=False)
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-
-
-def init_db():
-    Base.metadata.create_all(bind=engine)
+def init_db() -> None:
+    """Crea tablas y bootstrapea el super-admin si no existe (idempotente)."""
+    create_all()
+    settings = get_settings()
     db = SessionLocal()
     try:
         existing_super = db.query(User).filter(User.is_super_admin.is_(True)).first()
         if existing_super:
             return
-
-        email = os.environ.get("SUPER_ADMIN_EMAIL") or os.environ.get("ADMIN_USER", "admin")
-        password = os.environ.get("SUPER_ADMIN_PASSWORD") or os.environ.get("ADMIN_PASSWORD", "admin")
+        email = settings.effective_super_admin_email
+        password = settings.effective_super_admin_password
         super_admin = User(
             email=email,
             slug="super",
@@ -121,13 +48,5 @@ def init_db():
         db.add(super_admin)
         db.commit()
         print(f"Super-admin creado: email={email}")
-    finally:
-        db.close()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
     finally:
         db.close()
