@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 _BCV_URL = "https://www.bcv.org.ve/"
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36",
     "Accept-Language": "es-VE,es;q=0.9",
 }
 

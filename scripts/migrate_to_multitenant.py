@@ -82,7 +82,9 @@ def main():
         ).fetchall()
 
     print(f"  · settings.tiempo_rotacion = {tiempo_rotacion}")
-    print(f"  · {len(bg_por_id)} backgrounds, {len(cats_viejas)} categorías, {len(items_viejos)} productos")
+    print(
+        f"  · {len(bg_por_id)} backgrounds, {len(cats_viejas)} categorías, {len(items_viejos)} productos"
+    )
 
     # ── 3. Borrar las tablas viejas que entran en conflicto y crear el esquema nuevo
     print("Borrando tablas legacy y creando esquema nuevo…")
@@ -99,15 +101,19 @@ def main():
         # ── 4. Bootstrap super-admin (idempotente)
         if not db.query(User).filter(User.is_super_admin.is_(True)).first():
             email = os.environ.get("SUPER_ADMIN_EMAIL") or os.environ.get("ADMIN_USER", "admin")
-            password = os.environ.get("SUPER_ADMIN_PASSWORD") or os.environ.get("ADMIN_PASSWORD", "admin")
-            db.add(User(
-                email=email,
-                slug="super",
-                nombre_negocio="Super Admin",
-                password_hash=hash_password(password),
-                is_active=True,
-                is_super_admin=True,
-            ))
+            password = os.environ.get("SUPER_ADMIN_PASSWORD") or os.environ.get(
+                "ADMIN_PASSWORD", "admin"
+            )
+            db.add(
+                User(
+                    email=email,
+                    slug="super",
+                    nombre_negocio="Super Admin",
+                    password_hash=hash_password(password),
+                    is_active=True,
+                    is_super_admin=True,
+                )
+            )
             db.commit()
             print(f"Super-admin creado: email={email}")
 
@@ -115,9 +121,7 @@ def main():
         legacy_slug = os.environ.get("LEGACY_SLUG", "demo").lower()
         legacy_email = os.environ.get("LEGACY_EMAIL", "legacy@local").lower()
         legacy_pwd = (
-            os.environ.get("LEGACY_PASSWORD")
-            or os.environ.get("ADMIN_PASSWORD")
-            or "changeme"
+            os.environ.get("LEGACY_PASSWORD") or os.environ.get("ADMIN_PASSWORD") or "changeme"
         )
         legacy_nombre = os.environ.get("LEGACY_NEGOCIO", "Negocio (legacy)")
 
@@ -187,12 +191,14 @@ def main():
                 precio_str = str(int(precio))
             else:
                 precio_str = str(precio)
-            db.add(ProductItem(
-                category_id=cat_id,
-                nombre=nombre,
-                precio=precio_str,
-                orden=orden or 0,
-            ))
+            db.add(
+                ProductItem(
+                    category_id=cat_id,
+                    nombre=nombre,
+                    precio=precio_str,
+                    orden=orden or 0,
+                )
+            )
             n_items += 1
 
         db.commit()
