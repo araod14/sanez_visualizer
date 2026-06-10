@@ -37,16 +37,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import inspect, text
 
-from database import (
-    Base,
-    Category,
-    ProductItem,
-    SessionLocal,
-    User,
-    engine,
-    hash_password,
-    init_db,
-)
+from app.bootstrap import init_db
+from app.config import get_settings
+from app.db import SessionLocal, create_all, engine
+from app.models import Base, Category, ProductItem, User
+from app.security.passwords import hash_password
 
 
 def _detect_legacy(inspector) -> bool:
@@ -60,9 +55,10 @@ def _detect_legacy(inspector) -> bool:
 def main():
     inspector = inspect(engine)
 
-    # ── 1. Si ya hay esquema nuevo y nada legacy, simplemente init_db() y salir
+    # ── 1. Si ya hay esquema nuevo y nada legacy, crear tablas + seed y salir
     if not _detect_legacy(inspector):
-        init_db()
+        create_all()
+        init_db(get_settings())
         print("No se detectó esquema legacy. Nada que migrar.")
         return
 
@@ -201,7 +197,7 @@ def main():
 
         db.commit()
         print(f"\n✓ Migración completada: {len(cats_viejas)} categorías, {n_items} productos.")
-        print(f"\nLogin del usuario legacy:")
+        print("\nLogin del usuario legacy:")
         print(f"  email:    {legacy_email}")
         print(f"  password: {legacy_pwd}")
         print(f"  menú:     /menu/{legacy_slug}")

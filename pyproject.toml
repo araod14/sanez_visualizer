@@ -26,7 +26,7 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["main", "database"]
+py-modules = ["main"]
 packages = ["app", "app.models", "app.security", "app.services", "app.routers", "scrapers"]
 
 [tool.ruff]
@@ -36,6 +36,15 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "C4"]
 ignore = ["E501"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI usa llamadas (Depends/Form/File/Query) en los defaults por diseño.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Query",
+]
 
 [tool.ruff.format]
 quote-style = "double"

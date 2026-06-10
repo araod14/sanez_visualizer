@@ -1,7 +1,8 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from database import ExchangeRate, SessionLocal
+from app.db import SessionLocal
+from app.models import ExchangeRate
 from scrapers.bcv import ScraperError, fetch_bcv_rates
 
 log = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ def fetch_and_save_rates() -> None:
 
     db = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for currency, rate in rates.items():
             row = db.get(ExchangeRate, currency)
             if row:
