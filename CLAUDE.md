@@ -56,6 +56,7 @@ usuario gestiona sus categorías, productos y backgrounds; el público consume
 - `User` (id, email, slug único, nombre_negocio, password_hash, is_active, is_super_admin, tiempo_rotacion_segundos).
 - `Category` (id, user_id, nombre, orden, background_path). UniqueConstraint(user_id, orden).
 - `ProductItem` (id, category_id, nombre, precio: **String** — no Float; el frontend lo muestra tal cual).
+- `ExchangeRate` (currency PK: `"USD"` | `"EUR"`, rate: Float, updated_at). Una fila por moneda; se sobreescribe en cada ejecución del scraper.
 
 **Slug:** validado por `SLUG_REGEX` (`^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$`) + `RESERVED_SLUGS` (`admin`, `super`, `api`, `login`, `logout`, `static`, `menu`).
 
@@ -78,3 +79,10 @@ usuario gestiona sus categorías, productos y backgrounds; el público consume
 **Uploads:** se almacenan en `static/uploads/<user_id>/cat_<category_id>.<ext>`. Al borrar la categoría se borra el archivo; al borrar el usuario, se borra su carpeta entera con `shutil.rmtree`. El volumen `./static/uploads` montado en Docker cubre toda la jerarquía.
 
 **Migración legacy → multi-tenant:** `scripts/migrate_to_multitenant.py` detecta el esquema viejo (tabla `categories` con PK `clave`), lee la data con SQL crudo, dropea las tablas viejas, crea el esquema nuevo y reinjecta todo bajo un usuario "legacy" (`LEGACY_SLUG`, default `demo`). Es idempotente.
+
+**Scraper BCV (`scrapers/`):**
+- `scrapers/bcv.py` — `fetch_bcv_rates()` hace GET a `https://www.bcv.org.ve/`, parsea los bloques `#dolar` y `#euro` con BeautifulSoup y devuelve `{"USD": float, "EUR": float}`. Usa `verify=False` porque BCV tiene un certificado de CA gubernamental venezolana que no está en el trust store estándar.
+- `scrapers/tasks.py` — `fetch_and_save_rates()` llama al scraper y hace upsert en `exchange_rates`. Es la función que ejecuta el scheduler.
+- El scheduler (`APScheduler BackgroundScheduler`, `timezone="America/Caracas"`) arranca en `startup()` y dispara `fetch_and_save_rates` cada día a las **14:00 VET**. Se detiene limpiamente en `shutdown()`.
+- Endpoint público de consulta: `GET /api/exchange-rates` → `{"USD": {"rate": ..., "updated_at": ...}, "EUR": {...}}`.
+- Para consumir las tasas desde cualquier otra función: `db.get(ExchangeRate, "USD")` / `db.get(ExchangeRate, "EUR")`.
