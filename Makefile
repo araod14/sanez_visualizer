@@ -29,4 +29,4 @@ install:
 	pip install -r requirements.txt
 
 dev:
-	venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+	DEV_MODE=1 venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
