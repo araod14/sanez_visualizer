@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Category, User
 from app.services import ServiceError
+from app.services.menu import PRICE_MODES
 from app.services.upload import delete_file_if_exists, save_category_image
 
 
@@ -38,6 +39,13 @@ def rename_category(db: Session, cat: Category, nombre: str) -> None:
     if not nombre:
         raise ServiceError("El nombre no puede estar vacío")
     cat.nombre = nombre[:40]
+    db.commit()
+
+
+def set_price_mode(db: Session, cat: Category, modo: str) -> None:
+    if modo not in PRICE_MODES:
+        raise ServiceError("Modo de precio inválido")
+    cat.precio_modo = modo
     db.commit()
 
 

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.dependencies import current_user
-from app.models import User
+from app.models import ExchangeRate, User
 from app.security.passwords import verify_password
 from app.services.menu import build_menu_payload, get_active_user_by_slug
 from app.services.rates import list_rates
@@ -86,4 +86,6 @@ async def api_data(slug: str, db: Session = Depends(get_db)):
     user = get_active_user_by_slug(db, slug)
     if not user:
         raise HTTPException(status_code=404, detail="Menú no encontrado")
-    return JSONResponse(build_menu_payload(user))
+    usd = db.get(ExchangeRate, "USD")
+    usd_rate = usd.rate if usd else None
+    return JSONResponse(build_menu_payload(user, usd_rate))

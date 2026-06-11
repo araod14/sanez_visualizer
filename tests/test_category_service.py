@@ -62,6 +62,21 @@ def test_delete_renumbers_remaining(db_session, user):
     assert [c.orden for c in result] == [0, 1]
 
 
+def test_set_price_mode_default_and_update(db_session, user):
+    cat_service.create_category(db_session, user, "A")
+    cat = _cats(db_session, user)[0]
+    assert cat.precio_modo == "usd_fijo"
+    cat_service.set_price_mode(db_session, cat, "usd_a_bss")
+    assert _cats(db_session, user)[0].precio_modo == "usd_a_bss"
+
+
+def test_set_price_mode_rejects_invalid(db_session, user):
+    cat_service.create_category(db_session, user, "A")
+    cat = _cats(db_session, user)[0]
+    with pytest.raises(ServiceError):
+        cat_service.set_price_mode(db_session, cat, "yenes")
+
+
 def test_ownership_check(db_session, user, super_admin):
     cat_service.create_category(db_session, user, "Mine")
     cat = _cats(db_session, user)[0]

@@ -122,13 +122,22 @@
       line-height: 1;
     }
 
-    .prod-precio::before {
-      content: '$';
+    .prod-precio .sym {
       font-size: 0.5em;
       font-weight: 600;
       opacity: 0.75;
       vertical-align: super;
       margin-right: 0.08em;
+    }
+
+    /* Conversión a bolívares (modo ambos): segunda línea más discreta */
+    .prod-precio-bss {
+      font-size: clamp(1rem, 2.6vw, 2.6rem);
+      font-weight: 700;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 2px 12px rgba(0,0,0,0.9);
+      line-height: 1.1;
+      margin-top: 0.12em;
     }
 
     /* Sin productos en la categoría activa */
@@ -307,12 +316,27 @@
         vacia.style.display = 'block';
       } else {
         vacia.style.display = 'none';
+        const modo = pantalla.precio_modo || 'usd_fijo';
         grid.innerHTML = pantalla.items.map(it => `
           <div class="prod-card">
             <div class="prod-nombre">${esc(it.nombre)}</div>
-            <div class="prod-precio">${esc(String(it.precio))}</div>
+            ${precioHTML(it, modo)}
           </div>`).join('');
       }
+    }
+
+    function precioHTML(it, modo) {
+      const usd = `<div class="prod-precio"><span class="sym">$</span>${esc(String(it.precio))}</div>`;
+      // precio_bss ya viene formateado como "Bs 1.625,00"; si no aplica, caemos al crudo.
+      const bss = `<div class="prod-precio">${esc(String(it.precio_bss || it.precio))}</div>`;
+      if (modo === 'bss_fijo' || modo === 'usd_a_bss') return bss;
+      if (modo === 'ambos') {
+        const conv = it.precio_bss
+          ? `<div class="prod-precio-bss">${esc(String(it.precio_bss))}</div>`
+          : '';
+        return usd + conv;
+      }
+      return usd;  // usd_fijo (default)
     }
 
     function programarSiguiente() {

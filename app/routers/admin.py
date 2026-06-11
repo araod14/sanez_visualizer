@@ -88,6 +88,24 @@ async def admin_categoria_editar(
     return back_to("/admin", ok="Categoría renombrada")
 
 
+@router.post("/admin/categories/{cat_id}/price-mode")
+async def admin_categoria_modo_precio(
+    request: Request,
+    cat_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+    modo: str = Form(...),
+):
+    cat = category_service.get_owned_category(db, cat_id, user)
+    if not cat:
+        return back_to("/admin", error="Categoría no encontrada")
+    try:
+        category_service.set_price_mode(db, cat, modo)
+    except ServiceError as e:
+        return back_to("/admin", error=e.message)
+    return back_to("/admin", ok=f"Modo de precio de «{cat.nombre}» actualizado")
+
+
 @router.post("/admin/categories/{cat_id}/move")
 async def admin_categoria_mover(
     request: Request,

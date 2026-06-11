@@ -98,11 +98,14 @@ seguridad para dev local.
   "tiempo_rotacion": 10,
   "backgrounds": ["/static/uploads/<user_id>/cat_<id>.jpg", null, ...],
   "pantallas": [
-    {"capa_idx": 0, "categoria_nombre": "Cervezas", "items": [...]}
+    {"capa_idx": 0, "categoria_nombre": "Cervezas", "precio_modo": "ambos",
+     "items": [{"id": 1, "nombre": "Polar", "precio": "2", "precio_bss": "Bs 72,00"}]}
   ]
 }
 ```
 `capa_idx` es el índice posicional de la categoría en su orden, y `backgrounds[capa_idx]` es su imagen (puede ser `null`). Una categoría con >~15 items se parte en varias `pantallas` (mismo `capa_idx`) vía `app/services/menu.py::split_items_into_screens` (reparto equilibrado con `ceil(n/15)` pantallas).
+
+**Modo de precio (`Category.precio_modo`):** cada categoría elige cómo se publica el precio: `usd_fijo` (precio fijo en `$`), `bss_fijo` (precio fijo en `Bs`), `usd_a_bss` (el precio se carga en dólares y se convierte a Bs con la tasa `USD` guardada) o `ambos` (`$` + conversión). La conversión y el formateo `Bs 1.625,00` se hacen **en el servidor** en `app/services/menu.py` (`parse_price`, `format_bss`, `compute_precio_bss`); `build_menu_payload(user, usd_rate)` recibe la tasa USD (leída en `public.py::api_data` vía `db.get(ExchangeRate, "USD")`) y agrega `precio_modo` por pantalla y `precio_bss` por item (string ya formateado o `null` si no aplica / precio no numérico). Se edita por categoría en `/admin` (`POST /admin/categories/{id}/price-mode` → `category_service.set_price_mode`).
 
 **Frontend (`templates/public.html`)** es un único HTML autocontenido sin build. Lee `data-slug` del `<body>`, fetchea `/api/data/{slug}` al cargar y silenciosamente cada 30 s, y crea los `bg-capa` divs **dinámicamente** según `backgrounds.length` (cualquier cantidad de categorías, no más 4 fijos). Cycla por `pantallas[]` con crossfades CSS: el background sólo transiciona cuando `capa_idx` cambia entre pantallas consecutivas.
 

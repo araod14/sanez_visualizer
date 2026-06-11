@@ -10,3 +10,4 @@ static/uploads/
 .ruff_cache/
 build/
 dist/
+.playwright-mcp/

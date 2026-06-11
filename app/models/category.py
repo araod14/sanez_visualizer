@@ -15,6 +15,7 @@ class Category(Base):
     nombre = Column(String, nullable=False)
     orden = Column(Integer, nullable=False, default=0)
     background_path = Column(String, nullable=True)
+    precio_modo = Column(String, nullable=False, default="usd_fijo", server_default="usd_fijo")
 
     usuario = relationship("User", back_populates="categorias")
     items = relationship(

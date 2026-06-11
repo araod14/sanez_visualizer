@@ -400,6 +400,17 @@
           <button type="submit" class="btn btn-ghost" style="font-size:0.78rem;padding:0.3rem 0.7rem;">Renombrar</button>
         </form>
 
+        <form class="cat-rename-form" method="post" action="/admin/categories/{{ cat.id }}/price-mode">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <select name="modo" style="flex:1;">
+            <option value="usd_fijo"  {% if cat.precio_modo == 'usd_fijo'  %}selected{% endif %}>Precio en dólares ($)</option>
+            <option value="bss_fijo"  {% if cat.precio_modo == 'bss_fijo'  %}selected{% endif %}>Precio en bolívares (Bs)</option>
+            <option value="usd_a_bss" {% if cat.precio_modo == 'usd_a_bss' %}selected{% endif %}>Dólares → convertir a bolívares</option>
+            <option value="ambos"     {% if cat.precio_modo == 'ambos'     %}selected{% endif %}>Ambos ($ y Bs)</option>
+          </select>
+          <button type="submit" class="btn btn-ghost" style="font-size:0.78rem;padding:0.3rem 0.7rem;">Guardar modo</button>
+        </form>
+
         <form class="cat-bg-upload" method="post" action="/admin/categories/{{ cat.id }}/background" enctype="multipart/form-data">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="file" name="imagen" accept=".jpg,.jpeg,.png,.webp" required>
