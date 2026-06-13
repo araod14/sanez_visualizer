@@ -41,6 +41,49 @@ def test_add_item_to_category(client, user, db_session):
     assert "Polar" in nombres
 
 
+def test_set_estilo_lista_valido(client, user, db_session):
+    login(client, "user@x.com", "secret6")
+    r = post_with_csrf(client, "/admin/style", {"estilo": "estilo_3"}, token_path="/admin")
+    assert "ok=" in r.headers["location"]
+    db_session.refresh(user)
+    assert user.estilo_lista == "estilo_3"
+    assert client.get(f"/api/data/{user.slug}").json()["estilo_lista"] == "estilo_3"
+
+
+def test_set_estilo_lista_invalido(client, user, db_session):
+    login(client, "user@x.com", "secret6")
+    r = post_with_csrf(client, "/admin/style", {"estilo": "estilo_99"}, token_path="/admin")
+    assert "error=" in r.headers["location"]
+    db_session.refresh(user)
+    assert user.estilo_lista == "estilo_1"
+
+
+def test_add_item_con_descripcion_y_tamanos(client, user, db_session):
+    from app.services import category as cat_service
+
+    cat_service.create_category(db_session, user, "Pizzas")
+    cat = sorted(user.categorias, key=lambda c: c.orden)[0]
+    login(client, "user@x.com", "secret6")
+    r = post_with_csrf(
+        client,
+        "/admin/items/add",
+        {
+            "category_id": str(cat.id),
+            "nombre": "Margarita",
+            "precio": "10",
+            "descripcion": "Tomate y mozzarella",
+            "precio_peq": "6",
+            "precio_med": "9",
+            "precio_gran": "12",
+        },
+        token_path="/admin",
+    )
+    assert "ok=" in r.headers["location"]
+    item = client.get(f"/api/data/{user.slug}").json()["pantallas"][0]["items"][0]
+    assert item["descripcion"] == "Tomate y mozzarella"
+    assert [t["precio"] for t in item["tamanos"]] == ["6", "9", "12"]
+
+
 def test_csrf_rejected_on_admin_post(client, user):
     login(client, "user@x.com", "secret6")
     r = client.post("/admin/categories", data={"nombre": "X"}, follow_redirects=False)

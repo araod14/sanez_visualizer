@@ -12,6 +12,10 @@ class ProductItem(Base):
     )
     nombre = Column(String, nullable=False)
     precio = Column(String, nullable=False)
+    descripcion = Column(String, nullable=True)
+    precio_peq = Column(String, nullable=True)
+    precio_med = Column(String, nullable=True)
+    precio_gran = Column(String, nullable=True)
     orden = Column(Integer, nullable=False, default=0)
 
     categoria = relationship("Category", back_populates="items")

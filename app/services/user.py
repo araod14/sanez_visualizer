@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.models import Category, ProductItem, User
 from app.security.passwords import hash_password
 from app.services import ServiceError
+from app.services.menu import LIST_STYLES
 from app.services.upload import delete_user_dir
 
 SLUG_REGEX = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$")
@@ -21,6 +22,13 @@ def validar_slug(slug: str) -> str | None:
     if not SLUG_REGEX.match(slug):
         return None
     return slug
+
+
+def set_estilo_lista(db: Session, user: User, estilo: str) -> None:
+    if estilo not in LIST_STYLES:
+        raise ServiceError("Estilo inválido")
+    user.estilo_lista = estilo
+    db.commit()
 
 
 def user_stats(db: Session) -> list[dict]:

@@ -22,10 +22,14 @@ def test_api_data_payload_shape(client, user, db_session):
     item_service.add_item(db_session, cat.id, "Polar", "2")
 
     data = client.get(f"/api/data/{user.slug}").json()
-    assert set(data.keys()) == {"tiempo_rotacion", "backgrounds", "pantallas"}
+    assert set(data.keys()) == {"tiempo_rotacion", "estilo_lista", "backgrounds", "pantallas"}
+    assert data["estilo_lista"] == "estilo_1"
     assert data["backgrounds"] == [None]
     assert data["pantallas"][0]["categoria_nombre"] == "Cervezas"
-    assert data["pantallas"][0]["items"][0]["nombre"] == "Polar"
+    item = data["pantallas"][0]["items"][0]
+    assert item["nombre"] == "Polar"
+    assert item["descripcion"] == ""
+    assert item["tamanos"] == []
 
 
 def test_exchange_rates_endpoint(client):

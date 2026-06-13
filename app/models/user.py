@@ -16,6 +16,7 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_super_admin = Column(Boolean, default=False, nullable=False)
     tiempo_rotacion_segundos = Column(Integer, default=10, nullable=False)
+    estilo_lista = Column(String, default="estilo_1", server_default="estilo_1", nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
     categorias = relationship(

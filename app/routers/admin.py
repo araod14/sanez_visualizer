@@ -11,6 +11,7 @@ from app.routers.helpers import back_to
 from app.services import ServiceError
 from app.services import category as category_service
 from app.services import item as item_service
+from app.services import user as user_service
 from app.services.menu import resolve_background
 from app.templates import templates
 
@@ -54,6 +55,20 @@ async def admin_settings(
     user.tiempo_rotacion_segundos = tiempo_rotacion
     db.commit()
     return back_to("/admin", ok="Tiempo de rotación actualizado")
+
+
+@router.post("/admin/style")
+async def admin_estilo(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+    estilo: str = Form(...),
+):
+    try:
+        user_service.set_estilo_lista(db, user, estilo)
+    except ServiceError as e:
+        return back_to("/admin", error=e.message)
+    return back_to("/admin", ok="Estilo de la cartelera actualizado")
 
 
 @router.post("/admin/categories")
@@ -165,12 +180,18 @@ async def admin_item_add(
     category_id: int = Form(...),
     nombre: str = Form(...),
     precio: str = Form(...),
+    descripcion: str = Form(""),
+    precio_peq: str = Form(""),
+    precio_med: str = Form(""),
+    precio_gran: str = Form(""),
 ):
     cat = category_service.get_owned_category(db, category_id, user)
     if not cat:
         return back_to("/admin", error="Categoría inválida")
     try:
-        item_service.add_item(db, cat.id, nombre, precio)
+        item_service.add_item(
+            db, cat.id, nombre, precio, descripcion, precio_peq, precio_med, precio_gran
+        )
     except ServiceError as e:
         return back_to("/admin", error=e.message)
     return back_to("/admin", ok=f"Producto agregado a «{cat.nombre}»")
@@ -184,12 +205,18 @@ async def admin_item_edit(
     user: User = Depends(require_user),
     nombre: str = Form(...),
     precio: str = Form(...),
+    descripcion: str = Form(""),
+    precio_peq: str = Form(""),
+    precio_med: str = Form(""),
+    precio_gran: str = Form(""),
 ):
     item = item_service.get_owned_item(db, item_id, user)
     if not item:
         return back_to("/admin", error="Producto no encontrado")
     try:
-        item_service.edit_item(db, item, nombre, precio)
+        item_service.edit_item(
+            db, item, nombre, precio, descripcion, precio_peq, precio_med, precio_gran
+        )
     except ServiceError as e:
         return back_to("/admin", error=e.message)
     return back_to("/admin", ok="Producto actualizado")

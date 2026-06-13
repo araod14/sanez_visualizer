@@ -59,6 +59,7 @@ def test_build_menu_payload_shape(db_session):
 
     payload = build_menu_payload(u)
     assert payload["tiempo_rotacion"] == 7
+    assert payload["estilo_lista"] == "estilo_1"
     assert payload["backgrounds"] == [None]
     assert len(payload["pantallas"]) == 1
     pant = payload["pantallas"][0]
@@ -66,8 +67,45 @@ def test_build_menu_payload_shape(db_session):
     assert pant["categoria_nombre"] == "Cervezas"
     assert pant["precio_modo"] == "usd_fijo"
     assert pant["items"] == [
-        {"id": pant["items"][0]["id"], "nombre": "Polar", "precio": "2", "precio_bss": None}
+        {
+            "id": pant["items"][0]["id"],
+            "nombre": "Polar",
+            "precio": "2",
+            "precio_bss": None,
+            "descripcion": "",
+            "tamanos": [],
+        }
     ]
+
+
+def test_build_menu_payload_descripcion_y_tamanos(db_session):
+    from app.models import Category, ProductItem, User
+
+    u = User(email="pz@x.com", slug="pz1", nombre_negocio="N", password_hash="h")
+    db_session.add(u)
+    db_session.flush()
+    cat = Category(user_id=u.id, nombre="Pizzas", orden=0, precio_modo="usd_fijo")
+    db_session.add(cat)
+    db_session.flush()
+    db_session.add(
+        ProductItem(
+            category_id=cat.id,
+            nombre="Margarita",
+            precio="10",
+            descripcion="Tomate, mozzarella, albahaca",
+            precio_peq="6",
+            precio_med="9",
+            precio_gran="12",
+            orden=0,
+        )
+    )
+    db_session.commit()
+    db_session.refresh(u)
+
+    item = build_menu_payload(u)["pantallas"][0]["items"][0]
+    assert item["descripcion"] == "Tomate, mozzarella, albahaca"
+    assert [t["etiqueta"] for t in item["tamanos"]] == ["Peq.", "Med.", "Gran."]
+    assert [t["precio"] for t in item["tamanos"]] == ["6", "9", "12"]
 
 
 # --- helpers de precio -------------------------------------------------------

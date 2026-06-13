@@ -1,3 +1,30 @@
+{% macro estilo_preview(clave) -%}
+  {% if clave == 'estilo_1' %}
+    <div class="pv-title">MENÚ</div>
+    <div class="pv-row"><span class="pv-name">Polar</span><span class="pv-dots"></span><span class="pv-price">$2</span></div>
+    <div class="pv-row"><span class="pv-name">Solera</span><span class="pv-dots"></span><span class="pv-price">$3</span></div>
+  {% elif clave == 'estilo_2' %}
+    <div class="pv-title">MENÚ</div>
+    <div class="pv-cards">
+      <div class="pv-card"><span class="pv-cname">Polar</span><span class="pv-price">$4</span></div>
+      <div class="pv-card"><span class="pv-cname">Solera</span><span class="pv-price">$6</span></div>
+    </div>
+  {% elif clave == 'estilo_3' %}
+    <div class="pv-title">Pizzas</div>
+    <div class="pv-row"><span class="pv-num">1</span><span class="pv-name">Margarita</span><span class="pv-price">$8</span></div>
+    <div class="pv-row"><span class="pv-num">2</span><span class="pv-name">Pepperoni</span><span class="pv-price">$10</span></div>
+  {% elif clave == 'estilo_4' %}
+    <div class="pv-title">MENÚ</div>
+    <div class="pv-cards">
+      <div class="pv-card"><span class="pv-cname">MOJITO</span><span class="pv-price">$5</span></div>
+      <div class="pv-card"><span class="pv-cname">CUBA</span><span class="pv-price">$6</span></div>
+    </div>
+  {% else %}
+    <div class="pv-title">MENÚ</div>
+    <div class="pv-row"><span class="pv-name">Espresso</span><span class="pv-price">2,00 $</span></div>
+    <div class="pv-row"><span class="pv-name">Latte</span><span class="pv-price">3,50 $</span></div>
+  {% endif %}
+{%- endmacro %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -251,9 +278,10 @@
 
     .item-row.editing .item-nombre-text,
     .item-row.editing .item-precio-text,
+    .item-row.editing .item-desc-text,
     .item-row.editing .btn-edit,
     .item-row.editing .btn-delete-wrap { display: none; }
-    .item-row.editing .item-edit-form { display: flex; }
+    .item-row.editing .item-edit-form { display: flex; flex-wrap: wrap; }
 
     .btn-edit {
       background: transparent;
@@ -286,6 +314,98 @@
 
     .new-cat-form { display: flex; gap: 0.6rem; align-items: flex-end; flex-wrap: wrap; }
     .new-cat-form input[type="text"] { width: 240px; }
+
+    /* ── Selector de estilo de cartelera ── */
+    .estilo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+      gap: 0.6rem;
+    }
+    .estilo-grid button {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.7rem 0.7rem 0.8rem;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 0.6rem;
+      color: #9ca3af;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .estilo-grid button:hover { border-color: #e0c97f; color: #f9fafb; }
+    .estilo-grid button.activo {
+      border-color: #e0c97f;
+      background: rgba(224,201,127,0.1);
+      color: #e0c97f;
+      box-shadow: 0 0 0 1px #e0c97f inset;
+    }
+    .estilo-grid .estilo-nombre { font-weight: 700; font-size: 0.85rem; }
+    .estilo-grid .estilo-desc { font-size: 0.72rem; opacity: 0.8; line-height: 1.3; }
+
+    /* Mini-mockups de vista previa (réplica en miniatura de cada estilo) */
+    .estilo-preview {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      border-radius: 0.4rem;
+      overflow: hidden;
+      padding: 7px 9px;
+      margin-bottom: 0.55rem;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 8px;
+      line-height: 1.1;
+    }
+    .pv-title { text-align: center; font-weight: 800; letter-spacing: 0.12em; font-size: 9px; margin-bottom: 2px; }
+    .pv-row { display: flex; align-items: baseline; gap: 4px; }
+    .pv-name { white-space: nowrap; }
+    .pv-dots { flex: 1; border-bottom: 1px dotted currentColor; transform: translateY(-2px); opacity: 0.5; }
+    .pv-price { font-weight: 700; white-space: nowrap; }
+    .pv-cards { display: flex; gap: 5px; }
+    .pv-card { flex: 1; border-radius: 4px; padding: 5px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .pv-cname { font-size: 7px; white-space: nowrap; }
+    .pv-card .pv-price { font-size: 12px; font-weight: 900; }
+    .pv-num { font-weight: 800; }
+
+    .pv-estilo_1 { background: #161310; font-family: Georgia, 'Times New Roman', serif; }
+    .pv-estilo_1 .pv-title { color: #c9a84c; }
+    .pv-estilo_1 .pv-name { color: #ece3cf; }
+    .pv-estilo_1 .pv-price { color: #c9a84c; }
+    .pv-estilo_1 .pv-dots { border-color: rgba(201,168,76,0.5); }
+
+    .pv-estilo_2 { background: #0a0a0a; }
+    .pv-estilo_2 .pv-title { color: #e0c97f; }
+    .pv-estilo_2 .pv-card { background: #1e1e1e; border: 1px solid rgba(255,255,255,0.08); }
+    .pv-estilo_2 .pv-cname { color: #b8b8b8; }
+    .pv-estilo_2 .pv-card .pv-price { color: #fff; }
+
+    .pv-estilo_3 { background: #fcf9f2; font-family: Georgia, serif; }
+    .pv-estilo_3 .pv-title { color: #b91c1c; font-style: italic; }
+    .pv-estilo_3 .pv-row { border-bottom: 1px solid rgba(0,0,0,0.12); padding-bottom: 2px; }
+    .pv-estilo_3 .pv-num { color: #b91c1c; }
+    .pv-estilo_3 .pv-name { color: #b91c1c; font-style: italic; flex: 1; }
+    .pv-estilo_3 .pv-price { color: #b91c1c; }
+
+    .pv-estilo_4 { background: #0a0a12; }
+    .pv-estilo_4 .pv-title { color: #a855f7; }
+    .pv-estilo_4 .pv-card { background: #13131f; border: 1px solid rgba(168,85,247,0.45); }
+    .pv-estilo_4 .pv-cname { color: #c084fc; letter-spacing: 0.05em; }
+    .pv-estilo_4 .pv-card .pv-price { color: #fff; }
+
+    .pv-estilo_5 { background: #f8f8f8; }
+    .pv-estilo_5 .pv-title { color: #1a1a1a; font-weight: 300; letter-spacing: 0.25em; }
+    .pv-estilo_5 .pv-row { border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 2px; }
+    .pv-estilo_5 .pv-name { color: #1a1a1a; flex: 1; }
+    .pv-estilo_5 .pv-price { color: #777; font-weight: 400; }
+
+    /* Campos opcionales (descripción + tamaños) en forms de item */
+    .item-extra { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: flex-end; width: 100%; margin-top: 0.5rem; }
+    .item-extra .field input[type="text"] { width: 130px; padding: 0.4rem 0.6rem; font-size: 0.82rem; }
+    .item-extra .field input.desc { width: 230px; }
+    .item-desc-text { color: #9ca3af; font-size: 0.78rem; font-style: italic; flex-basis: 100%; padding-left: 0.1rem; }
 
     .vacio {
       text-align: center;
@@ -340,6 +460,28 @@
         </div>
         <button type="submit" class="btn">Guardar</button>
       </div>
+    </form>
+  </section>
+
+  <section>
+    <h2>Estilo de la cartelera</h2>
+    <form method="post" action="/admin/style" class="estilo-grid">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% set estilos = [
+        ('estilo_1', 'Restaurante clásico', 'Fondo oscuro, título dorado, filas con línea de puntos.'),
+        ('estilo_2', 'Tarjetas oscuras', 'Cuadrícula de tarjetas negras, precio grande en blanco.'),
+        ('estilo_3', 'Carta de pizzería', 'Panel claro, número rojo, descripción y tamaños Peq/Med/Gran.'),
+        ('estilo_4', 'Bar nocturno / neón', 'Fondo azul oscuro, acentos violeta, tarjetas 2 columnas.'),
+        ('estilo_5', 'Minimalista elegante', 'Panel claro, filas simples, precio con 2 decimales.')
+      ] %}
+      {% for clave, nombre, desc in estilos %}
+      <button type="submit" name="estilo" value="{{ clave }}"
+              class="{% if user.estilo_lista == clave %}activo{% endif %}">
+        <div class="estilo-preview pv-{{ clave }}">{{ estilo_preview(clave) }}</div>
+        <span class="estilo-nombre">{{ nombre }}</span>
+        <span class="estilo-desc">{{ desc }}</span>
+      </button>
+      {% endfor %}
     </form>
   </section>
 
@@ -433,6 +575,7 @@
                   <button type="submit" class="btn btn-danger">✕</button>
                 </form>
               </span>
+              {% if item.descripcion %}<span class="item-desc-text">{{ item.descripcion }}</span>{% endif %}
 
               <form class="item-edit-form" method="post" action="/admin/items/{{ item.id }}/edit">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -442,6 +585,24 @@
                 <button type="button" class="btn btn-ghost"
                         style="font-size:0.78rem;padding:0.35rem 0.65rem;"
                         onclick="cancelEdit({{ item.id }})">Cancelar</button>
+                <div class="item-extra">
+                  <div class="field">
+                    <label>Descripción (opcional)</label>
+                    <input type="text" class="desc" name="descripcion" value="{{ item.descripcion or '' }}" maxlength="200" placeholder="Ingredientes…">
+                  </div>
+                  <div class="field">
+                    <label>Peq.</label>
+                    <input type="text" name="precio_peq" value="{{ item.precio_peq or '' }}" maxlength="30" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Med.</label>
+                    <input type="text" name="precio_med" value="{{ item.precio_med or '' }}" maxlength="30" placeholder="—">
+                  </div>
+                  <div class="field">
+                    <label>Gran.</label>
+                    <input type="text" name="precio_gran" value="{{ item.precio_gran or '' }}" maxlength="30" placeholder="—">
+                  </div>
+                </div>
               </form>
             </div>
             {% endfor %}
@@ -462,6 +623,24 @@
             <input type="text" class="precio" name="precio" placeholder="0" maxlength="30" required>
           </div>
           <button type="submit" class="btn">+ Agregar</button>
+          <div class="item-extra">
+            <div class="field">
+              <label>Descripción (opcional)</label>
+              <input type="text" class="desc" name="descripcion" maxlength="200" placeholder="Ingredientes… (estilo pizzería)">
+            </div>
+            <div class="field">
+              <label>Peq.</label>
+              <input type="text" name="precio_peq" maxlength="30" placeholder="—">
+            </div>
+            <div class="field">
+              <label>Med.</label>
+              <input type="text" name="precio_med" maxlength="30" placeholder="—">
+            </div>
+            <div class="field">
+              <label>Gran.</label>
+              <input type="text" name="precio_gran" maxlength="30" placeholder="—">
+            </div>
+          </div>
         </form>
 
       </div>

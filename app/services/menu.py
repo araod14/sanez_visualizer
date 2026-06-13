@@ -16,6 +16,16 @@ from app.models import User
 PRICE_MODES = {"usd_fijo", "bss_fijo", "usd_a_bss", "ambos"}
 DEFAULT_PRICE_MODE = "usd_fijo"
 
+# Estilos visuales de la cartelera pública (se elige uno por usuario):
+#   estilo_1 -> restaurante clásico   estilo_2 -> tarjetas oscuras
+#   estilo_3 -> carta de pizzería     estilo_4 -> bar nocturno / neón
+#   estilo_5 -> minimalista elegante
+LIST_STYLES = {"estilo_1", "estilo_2", "estilo_3", "estilo_4", "estilo_5"}
+DEFAULT_LIST_STYLE = "estilo_1"
+
+# Etiquetas de tamaño para el estilo pizzería (col -> etiqueta mostrada).
+_SIZE_LABELS = (("precio_peq", "Peq."), ("precio_med", "Med."), ("precio_gran", "Gran."))
+
 _NUM_RE = re.compile(r"[+-]?\d+(?:[.,]\d+)?")
 
 
@@ -81,6 +91,22 @@ def resolve_background(path: str | None) -> str | None:
     return None
 
 
+def _item_tamanos(it, modo: str, usd_rate: float | None) -> list[dict]:
+    """Lista de tamaños (Peq./Med./Gran.) con precio presente, formateando BsS."""
+    tamanos = []
+    for col, etiqueta in _SIZE_LABELS:
+        precio = getattr(it, col, None)
+        if precio:
+            tamanos.append(
+                {
+                    "etiqueta": etiqueta,
+                    "precio": precio,
+                    "precio_bss": compute_precio_bss(precio, modo, usd_rate),
+                }
+            )
+    return tamanos
+
+
 def build_menu_payload(user: User, usd_rate: float | None = None) -> dict:
     cats = sorted(user.categorias, key=lambda c: c.orden)
     backgrounds = [resolve_background(c.background_path) for c in cats]
@@ -93,6 +119,8 @@ def build_menu_payload(user: User, usd_rate: float | None = None) -> dict:
                 "nombre": it.nombre,
                 "precio": it.precio,
                 "precio_bss": compute_precio_bss(it.precio, modo, usd_rate),
+                "descripcion": it.descripcion or "",
+                "tamanos": _item_tamanos(it, modo, usd_rate),
             }
             for it in cat.items
         ]
@@ -107,6 +135,7 @@ def build_menu_payload(user: User, usd_rate: float | None = None) -> dict:
             )
     return {
         "tiempo_rotacion": user.tiempo_rotacion_segundos,
+        "estilo_lista": user.estilo_lista or DEFAULT_LIST_STYLE,
         "backgrounds": backgrounds,
         "pantallas": pantallas,
     }
