@@ -103,6 +103,7 @@
     {% if error %}<div class="msg error">✗ {{ error }}</div>{% endif %}
 
     <form method="post" action="{% if modo == 'editar' %}/super/users/{{ target.id }}/edit{% else %}/super/users{% endif %}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
       <label for="nombre_negocio">Nombre del negocio</label>
       <input type="text" id="nombre_negocio" name="nombre_negocio" maxlength="80" required

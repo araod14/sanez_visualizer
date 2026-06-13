@@ -164,12 +164,14 @@
           <a class="btn-ghost" href="/super/users/{{ r.u.id }}/edit">Editar</a>
           {% if not r.u.is_super_admin and r.u.is_active %}
             <form method="post" action="/super/users/{{ r.u.id }}/impersonate">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button type="submit" class="btn-ghost">Entrar como</button>
             </form>
           {% endif %}
           {% if not r.u.is_super_admin %}
             <form method="post" action="/super/users/{{ r.u.id }}/delete"
                   onsubmit="return confirm('¿Eliminar a {{ r.u.nombre_negocio }}? Se borran sus datos e imágenes.')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
               <button type="submit" class="btn-danger">Eliminar</button>
             </form>
           {% endif %}

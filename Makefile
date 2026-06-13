@@ -1,4 +1,4 @@
-.PHONY: build up down restart logs ps dev install
+.PHONY: build up down restart logs ps dev install test lint migrate-db
 
 # ── Docker ─────────────────────────────────────────────────────────────────
 build:
@@ -16,7 +16,7 @@ restart:
 logs:
 	docker compose logs -f
 
-# Ejecuta la migración one-shot del esquema single-tenant → multi-tenant.
+# Migración one-shot del esquema single-tenant → multi-tenant (legacy).
 # Requiere que el contenedor esté arriba (make up) y que sanez.db exista.
 migrate:
 	docker compose exec app python scripts/migrate_to_multitenant.py
@@ -26,7 +26,17 @@ ps:
 
 # ── Desarrollo local (sin Docker) ──────────────────────────────────────────
 install:
-	pip install -r requirements.txt
+	venv/bin/pip install -e ".[dev]"
 
 dev:
-	venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+	DEV_MODE=1 venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+test:
+	venv/bin/python -m pytest
+
+lint:
+	venv/bin/ruff check . && venv/bin/ruff format --check .
+
+# Aplica las migraciones versionadas de Alembic a la DB local.
+migrate-db:
+	DEV_MODE=1 venv/bin/alembic upgrade head
