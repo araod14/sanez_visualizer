@@ -5,7 +5,12 @@ from sqlalchemy.orm import Session
 from app.models import Category, User
 from app.services import ServiceError
 from app.services.menu import PRICE_MODES
-from app.services.upload import delete_file_if_exists, save_category_image
+from app.services.upload import (
+    delete_category_preview,
+    delete_file_if_exists,
+    read_category_preview,
+    save_category_image,
+)
 
 
 def get_owned_category(db: Session, cat_id: int, user: User) -> Category | None:
@@ -71,8 +76,21 @@ def set_category_background(
     db.commit()
 
 
+def confirm_generated_background(db: Session, user: User, cat: Category) -> None:
+    """Promueve la previsualización generada por IA a fondo definitivo."""
+    content = read_category_preview(user.id, cat.id)
+    if content is None:
+        raise ServiceError("No hay ninguna previsualización para guardar")
+    cat.background_path = save_category_image(
+        user.id, cat.id, "bg.png", content, cat.background_path
+    )
+    delete_category_preview(user.id, cat.id)
+    db.commit()
+
+
 def delete_category(db: Session, user: User, cat: Category) -> str:
     delete_file_if_exists(cat.background_path)
+    delete_category_preview(user.id, cat.id)
     nombre = cat.nombre
     db.delete(cat)
     db.commit()
