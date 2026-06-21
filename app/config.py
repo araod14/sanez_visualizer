@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     upload_max_bytes: int = Field(5 * 1024 * 1024, alias="UPLOAD_MAX_BYTES")
     allowed_extensions: set[str] = {".jpg", ".jpeg", ".png", ".webp"}
 
+    # --- Generación de fondos por IA (texto → imagen) ---
+    image_provider: str = Field("gemini", alias="IMAGE_PROVIDER")
+    image_api_key: str = Field("", alias="IMAGE_API_KEY")
+    image_model: str = Field("gemini-2.5-flash-image", alias="IMAGE_MODEL")
+    image_aspect_ratio: str = Field("16:9", alias="IMAGE_ASPECT_RATIO")
+
     @property
     def effective_super_admin_email(self) -> str:
         return self.super_admin_email or self.admin_user

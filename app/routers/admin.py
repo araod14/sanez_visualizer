@@ -1,5 +1,7 @@
 """Rutas de usuario autenticado: panel, settings, CRUD de categorías e items."""
 
+from urllib.parse import urlencode
+
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -8,11 +10,16 @@ from app.db import get_db
 from app.dependencies import require_user
 from app.models import User
 from app.routers.helpers import back_to
-from app.services import ServiceError
+from app.services import ServiceError, image_gen
 from app.services import category as category_service
 from app.services import item as item_service
 from app.services import user as user_service
 from app.services.menu import resolve_background
+from app.services.upload import (
+    category_preview_path,
+    delete_category_preview,
+    save_category_preview,
+)
 from app.templates import templates
 
 router = APIRouter()
@@ -25,10 +32,17 @@ async def admin_panel(
     user: User = Depends(require_user),
     ok: str = "",
     error: str = "",
+    preview: int = 0,
+    prompt: str = "",
 ):
     categorias = sorted(user.categorias, key=lambda c: c.orden)
     for c in categorias:
         c.background_url = resolve_background(c.background_path)
+        c.preview_url = None
+        c.preview_prompt = ""
+        if c.id == preview:
+            c.preview_url = resolve_background(category_preview_path(user.id, c.id))
+            c.preview_prompt = prompt
     impersonator_id = request.session.get("impersonator_id")
     return templates.TemplateResponse(
         request,
@@ -156,6 +170,58 @@ async def admin_categoria_background(
     except ServiceError as e:
         return back_to("/admin", error=e.message)
     return back_to("/admin", ok=f"Imagen de «{cat.nombre}» actualizada")
+
+
+@router.post("/admin/categories/{cat_id}/background/generate")
+async def admin_categoria_background_generar(
+    request: Request,
+    cat_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+    prompt: str = Form(...),
+):
+    cat = category_service.get_owned_category(db, cat_id, user)
+    if not cat:
+        return back_to("/admin", error="Categoría no encontrada")
+    try:
+        full_prompt = image_gen.build_prompt(prompt)
+        contenido = image_gen.generate_background_image(full_prompt)
+        save_category_preview(user.id, cat.id, contenido)
+    except ServiceError as e:
+        return back_to("/admin", error=e.message)
+    qs = urlencode({"preview": cat_id, "prompt": prompt.strip()})
+    return RedirectResponse(url=f"/admin?{qs}#cat-{cat_id}", status_code=302)
+
+
+@router.post("/admin/categories/{cat_id}/background/confirm")
+async def admin_categoria_background_confirmar(
+    request: Request,
+    cat_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    cat = category_service.get_owned_category(db, cat_id, user)
+    if not cat:
+        return back_to("/admin", error="Categoría no encontrada")
+    try:
+        category_service.confirm_generated_background(db, user, cat)
+    except ServiceError as e:
+        return back_to("/admin", error=e.message)
+    return back_to("/admin", ok=f"Fondo de «{cat.nombre}» actualizado")
+
+
+@router.post("/admin/categories/{cat_id}/background/discard")
+async def admin_categoria_background_descartar(
+    request: Request,
+    cat_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_user),
+):
+    cat = category_service.get_owned_category(db, cat_id, user)
+    if not cat:
+        return back_to("/admin", error="Categoría no encontrada")
+    delete_category_preview(user.id, cat.id)
+    return back_to("/admin", ok="Previsualización descartada")
 
 
 @router.post("/admin/categories/{cat_id}/delete")

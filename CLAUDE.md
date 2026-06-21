@@ -60,6 +60,10 @@ funcionando como fallback para el bootstrap del super-admin.
 - `LOGIN_MAX_ATTEMPTS` (default 5) y `LOGIN_WINDOW_SECONDS` (default 300) — rate limit de login por IP, en memoria por proceso.
 - `DATABASE_URL` (default `sqlite:///./sanez.db`), `UPLOAD_DIR` (default `static/uploads`), `UPLOAD_MAX_BYTES` (default 5 MB).
 - `SCHEDULER_ENABLED` (default 1), `SCHEDULER_HOUR`/`SCHEDULER_MINUTE` (14:00) y `SCHEDULER_TZ` (`America/Caracas`).
+- `IMAGE_PROVIDER` (default `gemini`), `IMAGE_API_KEY` (vacío por defecto), `IMAGE_MODEL`
+  (default `gemini-2.5-flash-image`), `IMAGE_ASPECT_RATIO` (default `16:9`) — generación de
+  fondos por IA. Sin `IMAGE_API_KEY` la opción sigue visible pero generar devuelve un error
+  de configuración.
 
 Todas se definen en `app/config.py` (`Settings`).
 
@@ -143,6 +147,25 @@ except ServiceError as e:
 ```
 
 **Uploads:** se almacenan en `static/uploads/<user_id>/cat_<category_id>.<ext>`. Al borrar la categoría se borra el archivo; al borrar el usuario, se borra su carpeta entera con `shutil.rmtree`. El volumen `./static/uploads` montado en Docker cubre toda la jerarquía.
+
+**Fondos generados por IA (texto → imagen):** alternativa a subir un archivo. El usuario
+escribe una palabra/frase y un proveedor de IA (`app/services/image_gen.py`,
+`generate_background_image` — intercambiable por `IMAGE_PROVIDER`, arranca con Google Gemini
+vía `requests`) genera una imagen de fondo. `build_prompt` envuelve la frase con un
+`BASE_PROMPT` de "buen gusto" (landscape, sin texto, tonos que no compiten con el menú).
+Flujo **previsualizar y confirmar** sin estado en DB: la generación guarda un PNG efímero
+determinístico `static/uploads/<user_id>/cat_<id>__preview.png` (helpers en
+`services/upload.py`: `save_category_preview`/`read_category_preview`/
+`delete_category_preview`/`category_preview_path`). Endpoints en `admin.py`:
+`POST /admin/categories/{id}/background/generate` (genera → redirige a
+`/admin?preview=<id>&prompt=<frase>#cat-<id>`), `.../background/confirm`
+(`category_service.confirm_generated_background` promueve el preview a fondo definitivo vía
+`save_category_image` y borra el preview) y `.../background/discard` (borra el preview).
+`admin_panel` lee `?preview`/`?prompt` y expone `c.preview_url`/`c.preview_prompt` al template
+(bloque con Guardar/Regenerar/Descartar en `templates/admin/dashboard.html`). `delete_category`
+borra también el preview huérfano. **Nota:** `resolve_background` y `delete_file_if_exists`
+usan el path tal cual (sin `lstrip("/")` para el filesystem), por lo que funcionan con
+`UPLOAD_DIR` relativo (producción) o absoluto (tests con `tmp_path`).
 
 **Migración legacy → multi-tenant:** `scripts/migrate_to_multitenant.py` detecta el esquema viejo (tabla `categories` con PK `clave`), lee la data con SQL crudo, dropea las tablas viejas, crea el esquema nuevo y reinjecta todo bajo un usuario "legacy" (`LEGACY_SLUG`, default `demo`). Es idempotente.
 

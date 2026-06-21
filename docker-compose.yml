@@ -10,4 +10,8 @@ services:
       - SUPER_ADMIN_EMAIL=${SUPER_ADMIN_EMAIL:-${ADMIN_USER:-admin}}
       - SUPER_ADMIN_PASSWORD=${SUPER_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-admin}}
       - SECRET_KEY=${SECRET_KEY:-}
+      # Generación de fondos por IA (opcional). Sin IMAGE_API_KEY, generar da error.
+      - IMAGE_PROVIDER=${IMAGE_PROVIDER:-gemini}
+      - IMAGE_API_KEY=${IMAGE_API_KEY:-}
+      - IMAGE_MODEL=${IMAGE_MODEL:-gemini-2.5-flash-image}
     restart: unless-stopped

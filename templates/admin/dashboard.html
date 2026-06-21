@@ -252,6 +252,39 @@
       cursor: pointer;
     }
 
+    .cat-bg-ai {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid #374151;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .cat-bg-ai input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.75rem;
+      color: #e5e7eb;
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      padding: 0.35rem 0.55rem;
+    }
+    .cat-bg-ai-preview {
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid #374151;
+    }
+    .cat-bg-ai-hint {
+      margin: 0.4rem 0;
+      font-size: 0.72rem;
+      color: #9ca3af;
+    }
+    .cat-bg-ai-actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
     .items-list { padding: 0.5rem 1rem; }
     .item-row {
       display: flex;
@@ -507,7 +540,7 @@
     {% else %}
     <div class="cats-grid">
       {% for cat in categorias %}
-      <div class="cat-panel">
+      <div class="cat-panel" id="cat-{{ cat.id }}">
 
         {% if cat.background_url %}
           <div class="cat-bg-preview" style="background-image:url('{{ cat.background_url }}')"></div>
@@ -560,6 +593,35 @@
             {% if cat.background_url %}Reemplazar imagen{% else %}Subir imagen{% endif %}
           </button>
         </form>
+
+        {% if cat.preview_url %}
+        <div class="cat-bg-ai-preview">
+          <div class="cat-bg-preview" style="background-image:url('{{ cat.preview_url }}')"></div>
+          <p class="cat-bg-ai-hint">Previsualización generada por IA — guárdala o vuelve a generar.</p>
+          <div class="cat-bg-ai-actions">
+            <form method="post" action="/admin/categories/{{ cat.id }}/background/confirm">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn" style="font-size:0.78rem;padding:0.35rem 0.75rem;">Guardar fondo</button>
+            </form>
+            <form method="post" action="/admin/categories/{{ cat.id }}/background/generate">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input type="hidden" name="prompt" value="{{ cat.preview_prompt }}">
+              <button type="submit" class="btn btn-ghost" style="font-size:0.78rem;padding:0.35rem 0.75rem;">Regenerar</button>
+            </form>
+            <form method="post" action="/admin/categories/{{ cat.id }}/background/discard">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <button type="submit" class="btn btn-danger" style="font-size:0.78rem;padding:0.35rem 0.75rem;">Descartar</button>
+            </form>
+          </div>
+        </div>
+        {% else %}
+        <form class="cat-bg-ai" method="post" action="/admin/categories/{{ cat.id }}/background/generate">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="text" name="prompt" maxlength="200" required
+                 placeholder="…o generá con IA: ej «playa al atardecer»">
+          <button type="submit" class="btn btn-ghost" style="font-size:0.78rem;padding:0.35rem 0.75rem;">Generar con IA</button>
+        </form>
+        {% endif %}
 
         <div class="items-list">
           {% if cat.items %}

@@ -85,8 +85,13 @@ def split_items_into_screens(items: list[dict], per_screen: int = 15) -> list[li
 
 
 def resolve_background(path: str | None) -> str | None:
-    """Devuelve la URL pública del background si el archivo existe, si no None."""
-    if path and Path(path.lstrip("/")).exists():
+    """Devuelve la URL pública del background si el archivo existe, si no None.
+
+    El `path` guardado es una ruta de filesystem (relativa en producción,
+    p.ej. `static/uploads/...`; puede ser absoluta si `UPLOAD_DIR` lo es).
+    Se chequea la existencia tal cual y se sirve la URL con un único `/` inicial.
+    """
+    if path and Path(path).exists():
         return f"/{path.lstrip('/')}"
     return None
 
