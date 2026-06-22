@@ -45,17 +45,22 @@ def build_prompt(frase: str) -> str:
 
 
 def generate_background_image(prompt: str) -> bytes:
-    """Genera la imagen y devuelve sus bytes (PNG). Despacha según el proveedor.
+    """Genera la imagen y devuelve sus bytes. Despacha según el proveedor.
 
-    Lanza `ServiceError` si no hay API key, el proveedor no se reconoce o la API
-    falla / no devuelve imagen.
+    Lanza `ServiceError` si el proveedor requiere API key y falta, si el proveedor
+    no se reconoce o si la API falla / no devuelve imagen.
     """
     s = get_settings()
-    if not s.image_api_key:
-        raise ServiceError("Generación por IA no configurada (falta IMAGE_API_KEY en el entorno)")
     provider = (s.image_provider or "").strip().lower()
     if provider == "gemini":
+        if not s.image_api_key:
+            raise ServiceError(
+                "Generación por IA no configurada (falta IMAGE_API_KEY en el entorno)"
+            )
         return _generate_gemini(prompt, s.image_api_key, s.image_model)
+    if provider == "pollinations":
+        # Proveedor gratuito sin API key (ideal para pruebas).
+        return _generate_pollinations(prompt, s.image_aspect_ratio)
     raise ServiceError(f"Proveedor de imágenes no soportado: {provider!r}")
 
 
@@ -82,6 +87,39 @@ def _generate_gemini(prompt: str, api_key: str, model: str) -> bytes:
         return base64.b64decode(b64)
     except (binascii.Error, ValueError) as e:
         raise ServiceError("No se pudo decodificar la imagen generada") from e
+
+
+def _aspect_to_size(aspect_ratio: str, base_width: int = 1280) -> tuple[int, int]:
+    """Convierte `"16:9"` en `(width, height)` escalado a `base_width`.
+
+    Cae a 16:9 si el formato es inválido o degenerado.
+    """
+    try:
+        w, h = (int(x) for x in (aspect_ratio or "").split(":", 1))
+        if w <= 0 or h <= 0:
+            raise ValueError
+    except (ValueError, AttributeError):
+        w, h = 16, 9
+    return base_width, max(1, round(base_width * h / w))
+
+
+def _generate_pollinations(prompt: str, aspect_ratio: str) -> bytes:
+    """Proveedor gratuito (image.pollinations.ai): GET sin API key → bytes JPEG."""
+    width, height = _aspect_to_size(aspect_ratio)
+    encoded = requests.utils.quote(prompt, safe="")
+    url = f"https://image.pollinations.ai/prompt/{encoded}"
+    params = {"width": width, "height": height, "nologo": "true"}
+    try:
+        resp = requests.get(url, params=params, timeout=_TIMEOUT_SECONDS)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        log.warning("Fallo al llamar a Pollinations: %s", e)
+        raise ServiceError(f"Error al generar la imagen: {e}") from e
+
+    content = resp.content
+    if not content or not resp.headers.get("Content-Type", "").startswith("image/"):
+        raise ServiceError("El generador no devolvió ninguna imagen. Probá con otra frase.")
+    return content
 
 
 def _extract_inline_image(data: dict) -> str | None:

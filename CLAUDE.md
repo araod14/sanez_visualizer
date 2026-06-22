@@ -62,8 +62,11 @@ funcionando como fallback para el bootstrap del super-admin.
 - `SCHEDULER_ENABLED` (default 1), `SCHEDULER_HOUR`/`SCHEDULER_MINUTE` (14:00) y `SCHEDULER_TZ` (`America/Caracas`).
 - `IMAGE_PROVIDER` (default `gemini`), `IMAGE_API_KEY` (vacío por defecto), `IMAGE_MODEL`
   (default `gemini-2.5-flash-image`), `IMAGE_ASPECT_RATIO` (default `16:9`) — generación de
-  fondos por IA. Sin `IMAGE_API_KEY` la opción sigue visible pero generar devuelve un error
-  de configuración.
+  fondos por IA. Con `gemini` se necesita `IMAGE_API_KEY` **y billing habilitado** (todos los
+  modelos de imagen de Gemini tienen `limit: 0` en free tier). Sin `IMAGE_API_KEY` la opción
+  sigue visible pero generar devuelve un error de configuración. Alternativa **gratis y sin
+  clave** para pruebas: `IMAGE_PROVIDER=pollinations` (image.pollinations.ai, GET sin auth;
+  ignora `IMAGE_API_KEY`/`IMAGE_MODEL`, usa `IMAGE_ASPECT_RATIO` para las dimensiones).
 
 Todas se definen en `app/config.py` (`Settings`).
 
