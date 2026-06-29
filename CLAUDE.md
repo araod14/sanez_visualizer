@@ -68,7 +68,9 @@ funcionando como fallback para el bootstrap del super-admin.
   clave** para pruebas: `IMAGE_PROVIDER=pollinations` (image.pollinations.ai, GET sin auth;
   ignora `IMAGE_API_KEY`/`IMAGE_MODEL`, usa `IMAGE_ASPECT_RATIO` para las dimensiones).
 
-Todas se definen en `app/config.py` (`Settings`).
+Todas se definen en `app/config.py` (`Settings`). Hay un `.env.example` en la raíz
+con todas las vars comentadas y sus defaults: copiarlo a `.env` y ajustar (para arrancar
+local basta `DEV_MODE=1` + las credenciales del super-admin).
 
 **Protección CSRF:** dependencia global `verify_csrf` valida un token de sesión
 (`csrf_token`) en toda petición mutante (POST/PUT/DELETE). Las plantillas lo reciben
